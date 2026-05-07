@@ -490,3 +490,35 @@ impl<'a, T: Item> Iterator for ItemIter<'a, T> {
         (hint, Some(hint))
     }
 }
+
+#[cfg(all(test, feature = "import"))]
+mod tests {
+    use crate::accessor::Iter;
+
+    #[test]
+    fn accessor_with_zero_count_does_not_underflow() {
+        // Non-sparse accessor with `count: 0` previously caused
+        // `count - 1` to underflow inside `Iter::new`. The iterator must
+        // construct cleanly and yield zero items.
+        let json = br#"{
+            "asset": { "version": "2.0" },
+            "buffers": [
+                { "byteLength": 16, "uri": "data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAAAAAA==" }
+            ],
+            "bufferViews": [
+                { "buffer": 0, "byteLength": 16 }
+            ],
+            "accessors": [
+                { "bufferView": 0, "componentType": 5126, "count": 0, "type": "SCALAR" }
+            ]
+        }"#;
+        let (document, buffers, _images) =
+            crate::import_slice(json).expect("import should succeed");
+        let accessor = document.accessors().next().unwrap();
+        let iter = Iter::<f32>::new(accessor, |buffer: crate::buffer::Buffer| {
+            buffers.get(buffer.index()).map(|d| &d.0[..])
+        })
+        .expect("iter should construct");
+        assert_eq!(iter.count(), 0);
+    }
+}

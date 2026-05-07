@@ -329,3 +329,21 @@ where
 {
     import_slice_impl(slice.as_ref())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn relative_uri_with_invalid_percent_encoding_is_rejected() {
+        // `%FF%FE` decodes to bytes that are not valid UTF-8. The relative
+        // branch must not panic on the decode error; instead it falls back
+        // to `Scheme::Unsupported`, which `Scheme::read` reports as
+        // `Error::UnsupportedScheme`.
+        assert!(matches!(Scheme::parse("%FF%FE"), Scheme::Unsupported));
+        assert!(matches!(
+            Scheme::read(None, "%FF%FE"),
+            Err(Error::UnsupportedScheme)
+        ));
+    }
+}

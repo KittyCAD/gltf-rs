@@ -381,3 +381,36 @@ impl<'de> de::Deserialize<'de> for Checked<Semantic> {
         deserializer.deserialize_str(Visitor)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::validation::{Error, Validate};
+    use crate::{Path, Root};
+
+    #[test]
+    fn primitive_with_oob_position_accessor_is_rejected() {
+        // The mesh primitive's `POSITION` references accessor index 1, but
+        // no `accessors` array is present. `Primitive::validate` previously
+        // panicked on direct slice indexing here; it must now report errors.
+        let json = r#"{
+            "asset": {"version": "2.0"},
+            "meshes": [{
+                "primitives": [{
+                    "attributes": { "POSITION": 1 }
+                }]
+            }]
+        }"#;
+        let root: Root = serde_json::from_str(json).expect("parse root");
+        let mut errors = Vec::new();
+        root.validate(&root, Path::new, &mut |path, error| {
+            errors.push((path(), error));
+        });
+        // The accessor index validation reports `IndexOutOfBounds`; what
+        // matters is that `validate` returned without panicking.
+        assert!(
+            errors.iter().any(|(_, e)| *e == Error::IndexOutOfBounds),
+            "expected IndexOutOfBounds, got {:?}",
+            errors
+        );
+    }
+}
