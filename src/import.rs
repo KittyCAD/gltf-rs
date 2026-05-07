@@ -47,7 +47,10 @@ impl<'a> Scheme<'a> {
                 Scheme::Unsupported
             }
         } else {
-            Scheme::Relative(urlencoding::decode(uri).unwrap())
+            match urlencoding::decode(uri) {
+                Ok(decoded) => Scheme::Relative(decoded),
+                Err(_) => Scheme::Unsupported,
+            }
         }
     }
 
