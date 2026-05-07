@@ -182,6 +182,9 @@ pub mod curve {
             P: Fn() -> crate::Path,
             R: FnMut(&dyn Fn() -> crate::Path, Error),
         {
+            if self.control_points.is_empty() {
+                report(&|| path().field("controlPoints"), Error::Missing);
+            }
             if !self.weights.is_empty() && self.weights.len() != self.control_points.len() {
                 report(&|| path().field("weights"), Error::Invalid);
             }
@@ -222,6 +225,12 @@ pub mod curve {
             P: Fn() -> crate::Path,
             R: FnMut(&dyn Fn() -> crate::Path, Error),
         {
+            if self.control_points.is_empty() {
+                report(&|| path().field("controlPoints"), Error::Missing);
+            }
+            if self.knot_vector.is_empty() {
+                report(&|| path().field("knotVector"), Error::Missing);
+            }
             if !self.weights.is_empty() && self.weights.len() != self.control_points.len() {
                 report(&|| path().field("weights"), Error::Invalid);
             }
@@ -997,7 +1006,7 @@ fn trace_relation_is_default(relation: &Relation) -> bool {
 }
 
 /// Pair of vertices on a face with an accompanying 3D curve..
-#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "edge")]
 pub struct Edge {
@@ -1027,6 +1036,35 @@ pub struct Edge {
     #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
+}
+
+impl Validate for Edge {
+    fn validate<P, R>(&self, root: &Root, path: P, report: &mut R)
+    where
+        P: Fn() -> crate::Path,
+        R: FnMut(&dyn Fn() -> crate::Path, Error),
+    {
+        // Generated part.
+        self.curve.validate(root, || path().field("curve"), report);
+        self.start.validate(root, || path().field("start"), report);
+        self.end.validate(root, || path().field("end"), report);
+        self.closed
+            .validate(root, || path().field("closed"), report);
+        self.t.validate(root, || path().field("t"), report);
+        self.extras
+            .validate(root, || path().field("extras"), report);
+
+        // Custom part: open edges (`closed == false`) must have both
+        // `start` and `end` vertices, otherwise `Edge::endpoints` panics.
+        if !self.closed {
+            if self.start.is_none() {
+                report(&|| path().field("start"), Error::Missing);
+            }
+            if self.end.is_none() {
+                report(&|| path().field("end"), Error::Missing);
+            }
+        }
+    }
 }
 
 /// Edge loop.
@@ -1147,4 +1185,78 @@ pub struct Solid {
     #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::validation::{Error, Validate};
+
+    fn collect_errors<V: Validate>(value: &V) -> Vec<Error> {
+        let root = Root::default();
+        let mut errors = Vec::new();
+        value.validate(&root, crate::Path::new, &mut |_path, error| {
+            errors.push(error);
+        });
+        errors
+    }
+
+    #[test]
+    fn nurbs2d_with_empty_control_points_is_rejected() {
+        let nurbs = curve::Nurbs2d {
+            control_points: vec![],
+            order: 1,
+            knot_vector: vec![0.0, 1.0],
+            weights: vec![],
+            extras: Default::default(),
+        };
+        assert!(collect_errors(&nurbs).contains(&Error::Missing));
+    }
+
+    #[test]
+    fn nurbs3d_with_empty_control_points_is_rejected() {
+        let nurbs = curve::Nurbs3d {
+            control_points: vec![],
+            order: 1,
+            knot_vector: vec![0.0, 1.0],
+            weights: vec![],
+            extras: Default::default(),
+        };
+        assert!(collect_errors(&nurbs).contains(&Error::Missing));
+    }
+
+    #[test]
+    fn nurbs3d_with_empty_knot_vector_is_rejected() {
+        let nurbs = curve::Nurbs3d {
+            control_points: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+            order: 1,
+            knot_vector: vec![],
+            weights: vec![],
+            extras: Default::default(),
+        };
+        assert!(collect_errors(&nurbs).contains(&Error::Missing));
+    }
+
+    #[test]
+    fn open_edge_without_endpoints_is_rejected() {
+        // `closed == false` requires both `start` and `end`. The curve index
+        // points outside the (empty) `Root.curves_3d`, but that is unrelated
+        // to the open/start/end rule which produces two `Missing` errors.
+        let edge = Edge {
+            curve: IndexWithOrientation::same(Index::new(0)),
+            start: None,
+            end: None,
+            closed: false,
+            t: Interval(0.0, 1.0),
+            #[cfg(feature = "names")]
+            name: None,
+            extras: Default::default(),
+        };
+        let errors = collect_errors(&edge);
+        assert!(
+            errors.iter().filter(|e| **e == Error::Missing).count() >= 2,
+            "expected two Missing errors, got {:?}",
+            errors
+        );
+    }
 }

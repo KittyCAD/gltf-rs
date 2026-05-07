@@ -162,9 +162,15 @@ impl Validate for Primitive {
         let position_path = &|| path().field("attributes").key("POSITION");
         if let Some(pos_accessor_index) = self.attributes.get(&Checked::Valid(Semantic::Positions))
         {
-            // spec: POSITION accessor **must** have `min` and `max` properties defined.
-            let pos_accessor = &root.accessors[pos_accessor_index.value()];
+            // The accessor index is validated by `self.attributes.validate(..)`
+            // above, but that reports `Error::IndexOutOfRange` without
+            // short-circuiting. Use `.get(..)` here so we don't panic before
+            // the caller can return the accumulated errors.
+            let Some(pos_accessor) = root.accessors.get(pos_accessor_index.value()) else {
+                return;
+            };
 
+            // spec: POSITION accessor **must** have `min` and `max` properties defined.
             let min_path = &|| position_path().field("min");
             if let Some(ref min) = pos_accessor.min {
                 if from_value::<[f32; 3]>(min.clone()).is_err() {
@@ -388,5 +394,38 @@ impl<'de> de::Deserialize<'de> for Checked<Semantic> {
             }
         }
         deserializer.deserialize_str(Visitor)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::validation::{Error, Validate};
+    use crate::{Path, Root};
+
+    #[test]
+    fn primitive_with_oob_position_accessor_is_rejected() {
+        // The mesh primitive's `POSITION` references accessor index 1, but
+        // no `accessors` array is present. `Primitive::validate` previously
+        // panicked on direct slice indexing here; it must now report errors.
+        let json = r#"{
+            "asset": {"version": "2.0"},
+            "meshes": [{
+                "primitives": [{
+                    "attributes": { "POSITION": 1 }
+                }]
+            }]
+        }"#;
+        let root: Root = serde_json::from_str(json).expect("parse root");
+        let mut errors = Vec::new();
+        root.validate(&root, Path::new, &mut |path, error| {
+            errors.push((path(), error));
+        });
+        // The accessor index validation reports `IndexOutOfBounds`; what
+        // matters is that `validate` returned without panicking.
+        assert!(
+            errors.iter().any(|(_, e)| *e == Error::IndexOutOfBounds),
+            "expected IndexOutOfBounds, got {:?}",
+            errors
+        );
     }
 }

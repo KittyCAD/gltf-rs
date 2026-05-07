@@ -249,7 +249,12 @@ impl<'a> Glb<'a> {
     pub fn from_slice(mut data: &'a [u8]) -> Result<Self, crate::Error> {
         let header = Header::from_reader(&mut data)
             .and_then(|header| {
-                let contents_length = header.length as usize - Header::size_of();
+                let contents_length = (header.length as usize)
+                    .checked_sub(Header::size_of())
+                    .ok_or(Error::Length {
+                        length: header.length,
+                        length_read: data.len(),
+                    })?;
                 if contents_length <= data.len() {
                     Ok(header)
                 } else {
@@ -282,7 +287,12 @@ impl<'a> Glb<'a> {
         let header = Header::from_reader(&mut reader).map_err(crate::Error::Binary)?;
         match header.version {
             2 => {
-                let glb_len = header.length - Header::size_of() as u32;
+                let glb_len = header.length.checked_sub(Header::size_of() as u32).ok_or(
+                    crate::Error::Binary(Error::Length {
+                        length: header.length,
+                        length_read: 0,
+                    }),
+                )?;
                 let mut buf = vec![0; glb_len as usize];
                 if let Err(e) = reader.read_exact(&mut buf).map_err(Error::Io) {
                     Err(crate::Error::Binary(e))
@@ -326,3 +336,30 @@ impl fmt::Display for Error {
 }
 
 impl ::std::error::Error for Error {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_glb_header(length: u32) -> [u8; 12] {
+        let mut buf = [0u8; 12];
+        buf[..4].copy_from_slice(b"glTF");
+        buf[4..8].copy_from_slice(&2u32.to_le_bytes());
+        buf[8..12].copy_from_slice(&length.to_le_bytes());
+        buf
+    }
+
+    #[test]
+    fn from_slice_rejects_length_below_header_size() {
+        // GLB header that declares `length = 0`. The contents-length subtraction
+        // (`length - 12`) must not underflow.
+        let buf = make_glb_header(0);
+        assert!(Glb::from_slice(&buf).is_err());
+    }
+
+    #[test]
+    fn from_reader_rejects_length_below_header_size() {
+        let buf = make_glb_header(0);
+        assert!(Glb::from_reader(io::Cursor::new(buf)).is_err());
+    }
+}

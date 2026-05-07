@@ -289,14 +289,18 @@ impl<'a, 's, T: Item> Iter<'s, T> {
             Some(sparse) => {
                 // Using `if let` here instead of map to preserve the early return behavior.
                 let base_iter = if let Some(view) = accessor.view() {
-                    let stride = view.stride().unwrap_or(mem::size_of::<T>());
+                    if accessor.count() == 0 {
+                        Some(ItemIter::new(&[], mem::size_of::<T>()))
+                    } else {
+                        let stride = view.stride().unwrap_or(mem::size_of::<T>());
 
-                    let start = accessor.offset();
-                    let end = start + stride * (accessor.count() - 1) + mem::size_of::<T>();
-                    let subslice = buffer_view_slice(view, &get_buffer_data)
-                        .and_then(|slice| slice.get(start..end))?;
+                        let start = accessor.offset();
+                        let end = start + stride * (accessor.count() - 1) + mem::size_of::<T>();
+                        let subslice = buffer_view_slice(view, &get_buffer_data)
+                            .and_then(|slice| slice.get(start..end))?;
 
-                    Some(ItemIter::new(subslice, stride))
+                        Some(ItemIter::new(subslice, stride))
+                    }
                 } else {
                     None
                 };
@@ -310,10 +314,14 @@ impl<'a, 's, T: Item> Iter<'s, T> {
                     let index_size = indices.index_type().size();
                     let stride = view.stride().unwrap_or(index_size);
 
-                    let start = indices.offset();
-                    let end = start + stride * (sparse_count - 1) + index_size;
-                    let subslice = buffer_view_slice(view, &get_buffer_data)
-                        .and_then(|slice| slice.get(start..end))?;
+                    let subslice = if sparse_count == 0 {
+                        &[][..]
+                    } else {
+                        let start = indices.offset();
+                        let end = start + stride * (sparse_count - 1) + index_size;
+                        buffer_view_slice(view, &get_buffer_data)
+                            .and_then(|slice| slice.get(start..end))?
+                    };
 
                     match indices.index_type() {
                         accessor::sparse::IndexType::U8 => {
@@ -332,10 +340,14 @@ impl<'a, 's, T: Item> Iter<'s, T> {
                     let view = values.view();
                     let stride = view.stride().unwrap_or(mem::size_of::<T>());
 
-                    let start = values.offset();
-                    let end = start + stride * (sparse_count - 1) + mem::size_of::<T>();
-                    let subslice = buffer_view_slice(view, &get_buffer_data)
-                        .and_then(|slice| slice.get(start..end))?;
+                    let subslice = if sparse_count == 0 {
+                        &[][..]
+                    } else {
+                        let start = values.offset();
+                        let end = start + stride * (sparse_count - 1) + mem::size_of::<T>();
+                        buffer_view_slice(view, &get_buffer_data)
+                            .and_then(|slice| slice.get(start..end))?
+                    };
 
                     ItemIter::new(subslice, stride)
                 };
@@ -357,10 +369,14 @@ impl<'a, 's, T: Item> Iter<'s, T> {
                         stride
                     );
 
-                    let start = accessor.offset();
-                    let end = start + stride * (accessor.count() - 1) + mem::size_of::<T>();
-                    let subslice = buffer_view_slice(view, &get_buffer_data)
-                        .and_then(|slice| slice.get(start..end))?;
+                    let subslice = if accessor.count() == 0 {
+                        &[][..]
+                    } else {
+                        let start = accessor.offset();
+                        let end = start + stride * (accessor.count() - 1) + mem::size_of::<T>();
+                        buffer_view_slice(view, &get_buffer_data)
+                            .and_then(|slice| slice.get(start..end))?
+                    };
 
                     Some(Iter::Standard(ItemIter {
                         stride,
@@ -427,5 +443,37 @@ impl<'a, T: Item> Iterator for ItemIter<'a, T> {
         let hint = self.data.len() / self.stride
             + (self.data.len() % self.stride >= mem::size_of::<T>()) as usize;
         (hint, Some(hint))
+    }
+}
+
+#[cfg(all(test, feature = "import"))]
+mod tests {
+    use crate::accessor::Iter;
+
+    #[test]
+    fn accessor_with_zero_count_does_not_underflow() {
+        // Non-sparse accessor with `count: 0` previously caused
+        // `count - 1` to underflow inside `Iter::new`. The iterator must
+        // construct cleanly and yield zero items.
+        let json = br#"{
+            "asset": { "version": "2.0" },
+            "buffers": [
+                { "byteLength": 16, "uri": "data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAAAAAA==" }
+            ],
+            "bufferViews": [
+                { "buffer": 0, "byteLength": 16 }
+            ],
+            "accessors": [
+                { "bufferView": 0, "componentType": 5126, "count": 0, "type": "SCALAR" }
+            ]
+        }"#;
+        let (document, buffers, _images) =
+            crate::import_slice(json).expect("import should succeed");
+        let accessor = document.accessors().next().unwrap();
+        let iter = Iter::<f32>::new(accessor, |buffer: crate::buffer::Buffer| {
+            buffers.get(buffer.index()).map(|d| &d.0[..])
+        })
+        .expect("iter should construct");
+        assert_eq!(iter.count(), 0);
     }
 }
