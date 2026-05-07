@@ -287,13 +287,12 @@ impl<'a> Glb<'a> {
         let header = Header::from_reader(&mut reader).map_err(crate::Error::Binary)?;
         match header.version {
             2 => {
-                let glb_len = header
-                    .length
-                    .checked_sub(Header::size_of() as u32)
-                    .ok_or(crate::Error::Binary(Error::Length {
+                let glb_len = header.length.checked_sub(Header::size_of() as u32).ok_or(
+                    crate::Error::Binary(Error::Length {
                         length: header.length,
                         length_read: 0,
-                    }))?;
+                    }),
+                )?;
                 let mut buf = vec![0; glb_len as usize];
                 if let Err(e) = reader.read_exact(&mut buf).map_err(Error::Io) {
                     Err(crate::Error::Binary(e))
