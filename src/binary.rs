@@ -337,3 +337,30 @@ impl fmt::Display for Error {
 }
 
 impl ::std::error::Error for Error {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_glb_header(length: u32) -> [u8; 12] {
+        let mut buf = [0u8; 12];
+        buf[..4].copy_from_slice(b"glTF");
+        buf[4..8].copy_from_slice(&2u32.to_le_bytes());
+        buf[8..12].copy_from_slice(&length.to_le_bytes());
+        buf
+    }
+
+    #[test]
+    fn from_slice_rejects_length_below_header_size() {
+        // GLB header that declares `length = 0`. The contents-length subtraction
+        // (`length - 12`) must not underflow.
+        let buf = make_glb_header(0);
+        assert!(Glb::from_slice(&buf).is_err());
+    }
+
+    #[test]
+    fn from_reader_rejects_length_below_header_size() {
+        let buf = make_glb_header(0);
+        assert!(Glb::from_reader(io::Cursor::new(buf)).is_err());
+    }
+}

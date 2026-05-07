@@ -1186,3 +1186,77 @@ pub struct Solid {
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::validation::{Error, Validate};
+
+    fn collect_errors<V: Validate>(value: &V) -> Vec<Error> {
+        let root = Root::default();
+        let mut errors = Vec::new();
+        value.validate(&root, crate::Path::new, &mut |_path, error| {
+            errors.push(error);
+        });
+        errors
+    }
+
+    #[test]
+    fn nurbs2d_with_empty_control_points_is_rejected() {
+        let nurbs = curve::Nurbs2d {
+            control_points: vec![],
+            order: 1,
+            knot_vector: vec![0.0, 1.0],
+            weights: vec![],
+            extras: Default::default(),
+        };
+        assert!(collect_errors(&nurbs).contains(&Error::Missing));
+    }
+
+    #[test]
+    fn nurbs3d_with_empty_control_points_is_rejected() {
+        let nurbs = curve::Nurbs3d {
+            control_points: vec![],
+            order: 1,
+            knot_vector: vec![0.0, 1.0],
+            weights: vec![],
+            extras: Default::default(),
+        };
+        assert!(collect_errors(&nurbs).contains(&Error::Missing));
+    }
+
+    #[test]
+    fn nurbs3d_with_empty_knot_vector_is_rejected() {
+        let nurbs = curve::Nurbs3d {
+            control_points: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+            order: 1,
+            knot_vector: vec![],
+            weights: vec![],
+            extras: Default::default(),
+        };
+        assert!(collect_errors(&nurbs).contains(&Error::Missing));
+    }
+
+    #[test]
+    fn open_edge_without_endpoints_is_rejected() {
+        // `closed == false` requires both `start` and `end`. The curve index
+        // points outside the (empty) `Root.curves_3d`, but that is unrelated
+        // to the open/start/end rule which produces two `Missing` errors.
+        let edge = Edge {
+            curve: IndexWithOrientation::same(Index::new(0)),
+            start: None,
+            end: None,
+            closed: false,
+            t: Interval(0.0, 1.0),
+            #[cfg(feature = "names")]
+            name: None,
+            extras: Default::default(),
+        };
+        let errors = collect_errors(&edge);
+        assert!(
+            errors.iter().filter(|e| **e == Error::Missing).count() >= 2,
+            "expected two Missing errors, got {:?}",
+            errors
+        );
+    }
+}
