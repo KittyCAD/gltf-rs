@@ -1,6 +1,5 @@
-use crate::validation::Validate;
-use crate::{buffer, extensions, Extras, Index};
-use gltf_derive::Validate;
+use crate::validation::{Error, Validate};
+use crate::{buffer, extensions, Extras, Index, Path, Root};
 use serde_derive::{Deserialize, Serialize};
 
 /// All valid MIME types.
@@ -12,7 +11,7 @@ pub const VALID_MIME_TYPES: &[&str] = &[
 ];
 
 /// Image data used to create a texture.
-#[derive(Clone, Debug, Deserialize, Serialize, Validate)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Image {
     /// The index of the buffer view that contains the image. Use this instead of
     /// the image's uri property.
@@ -45,6 +44,37 @@ pub struct Image {
     #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Option::is_none"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
+}
+
+impl Validate for Image {
+    fn validate<P, R>(&self, root: &Root, path: P, report: &mut R)
+    where
+        P: Fn() -> Path,
+        R: FnMut(&dyn Fn() -> Path, Error),
+    {
+        // Generated part.
+        self.buffer_view
+            .validate(root, || path().field("bufferView"), report);
+        self.mime_type
+            .validate(root, || path().field("mimeType"), report);
+        self.uri.validate(root, || path().field("uri"), report);
+        self.extensions
+            .validate(root, || path().field("extensions"), report);
+        self.extras
+            .validate(root, || path().field("extras"), report);
+
+        // Custom part: spec requires exactly one of `bufferView` or `uri`,
+        // and `mimeType` is required when `bufferView` is used.
+        match (self.buffer_view.is_some(), self.uri.is_some()) {
+            (true, true) | (false, false) => {
+                report(&|| path().field("uri"), Error::Invalid);
+            }
+            (true, false) if self.mime_type.is_none() => {
+                report(&|| path().field("mimeType"), Error::Missing);
+            }
+            _ => {}
+        }
+    }
 }
 
 /// An image MIME type.
