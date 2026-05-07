@@ -147,9 +147,15 @@ where
         .attributes
         .get(&Checked::Valid(Semantic::Positions))
     {
-        // spec: POSITION accessor **must** have `min` and `max` properties defined.
-        let pos_accessor = &root.accessors[pos_accessor_index.value()];
+        // The accessor index is validated by `primitive.attributes.validate(..)`
+        // above, but that reports `Error::IndexOutOfRange` without
+        // short-circuiting. Use `.get(..)` here so we don't panic before
+        // the caller can return the accumulated errors.
+        let Some(pos_accessor) = root.accessors.get(pos_accessor_index.value()) else {
+            return;
+        };
 
+        // spec: POSITION accessor **must** have `min` and `max` properties defined.
         let min_path = &|| position_path().field("min");
         if let Some(ref min) = pos_accessor.min {
             if from_value::<[f32; 3]>(min.clone()).is_err() {
