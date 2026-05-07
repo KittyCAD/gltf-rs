@@ -331,14 +331,18 @@ impl<'a, 's, T: Item> Iter<'s, T> {
             Some(sparse) => {
                 // Using `if let` here instead of map to preserve the early return behavior.
                 let base_iter = if let Some(view) = accessor.view() {
-                    let stride = view.stride().unwrap_or(mem::size_of::<T>());
+                    if accessor.count() == 0 {
+                        Some(ItemIter::new(&[], mem::size_of::<T>()))
+                    } else {
+                        let stride = view.stride().unwrap_or(mem::size_of::<T>());
 
-                    let start = accessor.offset();
-                    let end = start + stride * (accessor.count() - 1) + mem::size_of::<T>();
-                    let subslice = buffer_view_slice(view, &get_buffer_data)
-                        .and_then(|slice| slice.get(start..end))?;
+                        let start = accessor.offset();
+                        let end = start + stride * (accessor.count() - 1) + mem::size_of::<T>();
+                        let subslice = buffer_view_slice(view, &get_buffer_data)
+                            .and_then(|slice| slice.get(start..end))?;
 
-                    Some(ItemIter::new(subslice, stride))
+                        Some(ItemIter::new(subslice, stride))
+                    }
                 } else {
                     None
                 };
@@ -353,10 +357,14 @@ impl<'a, 's, T: Item> Iter<'s, T> {
                     let index_size = indices.index_type().size();
                     let stride = view.stride().unwrap_or(index_size);
 
-                    let start = indices.offset();
-                    let end = start + stride * (sparse_count - 1) + index_size;
-                    let subslice = buffer_view_slice(view, &get_buffer_data)
-                        .and_then(|slice| slice.get(start..end))?;
+                    let subslice = if sparse_count == 0 {
+                        &[][..]
+                    } else {
+                        let start = indices.offset();
+                        let end = start + stride * (sparse_count - 1) + index_size;
+                        buffer_view_slice(view, &get_buffer_data)
+                            .and_then(|slice| slice.get(start..end))?
+                    };
 
                     match indices.index_type() {
                         accessor::sparse::IndexType::U8 => {
@@ -375,10 +383,14 @@ impl<'a, 's, T: Item> Iter<'s, T> {
                     let view = values.view();
                     let stride = view.stride().unwrap_or(mem::size_of::<T>());
 
-                    let start = values.offset();
-                    let end = start + stride * (sparse_count - 1) + mem::size_of::<T>();
-                    let subslice = buffer_view_slice(view, &get_buffer_data)
-                        .and_then(|slice| slice.get(start..end))?;
+                    let subslice = if sparse_count == 0 {
+                        &[][..]
+                    } else {
+                        let start = values.offset();
+                        let end = start + stride * (sparse_count - 1) + mem::size_of::<T>();
+                        buffer_view_slice(view, &get_buffer_data)
+                            .and_then(|slice| slice.get(start..end))?
+                    };
 
                     ItemIter::new(subslice, stride)
                 };
@@ -400,10 +412,14 @@ impl<'a, 's, T: Item> Iter<'s, T> {
                         stride
                     );
 
-                    let start = accessor.offset();
-                    let end = start + stride * (accessor.count() - 1) + mem::size_of::<T>();
-                    let subslice = buffer_view_slice(view, &get_buffer_data)
-                        .and_then(|slice| slice.get(start..end))?;
+                    let subslice = if accessor.count() == 0 {
+                        &[][..]
+                    } else {
+                        let start = accessor.offset();
+                        let end = start + stride * (accessor.count() - 1) + mem::size_of::<T>();
+                        buffer_view_slice(view, &get_buffer_data)
+                            .and_then(|slice| slice.get(start..end))?
+                    };
 
                     Some(Iter::Standard(ItemIter {
                         stride,
