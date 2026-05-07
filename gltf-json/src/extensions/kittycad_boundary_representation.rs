@@ -182,6 +182,9 @@ pub mod curve {
             P: Fn() -> crate::Path,
             R: FnMut(&dyn Fn() -> crate::Path, Error),
         {
+            if self.control_points.is_empty() {
+                report(&|| path().field("controlPoints"), Error::Missing);
+            }
             if !self.weights.is_empty() && self.weights.len() != self.control_points.len() {
                 report(&|| path().field("weights"), Error::Invalid);
             }
@@ -222,6 +225,12 @@ pub mod curve {
             P: Fn() -> crate::Path,
             R: FnMut(&dyn Fn() -> crate::Path, Error),
         {
+            if self.control_points.is_empty() {
+                report(&|| path().field("controlPoints"), Error::Missing);
+            }
+            if self.knot_vector.is_empty() {
+                report(&|| path().field("knotVector"), Error::Missing);
+            }
             if !self.weights.is_empty() && self.weights.len() != self.control_points.len() {
                 report(&|| path().field("weights"), Error::Invalid);
             }
@@ -997,7 +1006,7 @@ fn trace_relation_is_default(relation: &Relation) -> bool {
 }
 
 /// Pair of vertices on a face with an accompanying 3D curve..
-#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "edge")]
 pub struct Edge {
@@ -1027,6 +1036,35 @@ pub struct Edge {
     #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
+}
+
+impl Validate for Edge {
+    fn validate<P, R>(&self, root: &Root, path: P, report: &mut R)
+    where
+        P: Fn() -> crate::Path,
+        R: FnMut(&dyn Fn() -> crate::Path, Error),
+    {
+        // Generated part.
+        self.curve.validate(root, || path().field("curve"), report);
+        self.start.validate(root, || path().field("start"), report);
+        self.end.validate(root, || path().field("end"), report);
+        self.closed
+            .validate(root, || path().field("closed"), report);
+        self.t.validate(root, || path().field("t"), report);
+        self.extras
+            .validate(root, || path().field("extras"), report);
+
+        // Custom part: open edges (`closed == false`) must have both
+        // `start` and `end` vertices, otherwise `Edge::endpoints` panics.
+        if !self.closed {
+            if self.start.is_none() {
+                report(&|| path().field("start"), Error::Missing);
+            }
+            if self.end.is_none() {
+                report(&|| path().field("end"), Error::Missing);
+            }
+        }
+    }
 }
 
 /// Edge loop.
