@@ -625,15 +625,15 @@ impl Document {
         }
     }
 
-    impl_fn_for_kcad!(self, Solid, solids);
-    impl_fn_for_kcad!(self, Shell, shells);
-    impl_fn_for_kcad!(self, Face, faces);
-    impl_fn_for_kcad!(self, Loop, loops);
-    impl_fn_for_kcad!(self, Edge, edges);
-    impl_fn_for_kcad!(self, Vertex, vertices);
-    impl_fn_for_kcad!(Curve2d, curves_2d);
-    impl_fn_for_kcad!(Curve3d, curves_3d);
-    impl_fn_for_kcad!(Surface, surfaces);
+    impl_fn_for_kcad!(self, Solid<'_>, solids);
+    impl_fn_for_kcad!(self, Shell<'_>, shells);
+    impl_fn_for_kcad!(self, Face<'_>, faces);
+    impl_fn_for_kcad!(self, Loop<'_>, loops);
+    impl_fn_for_kcad!(self, Edge<'_>, edges);
+    impl_fn_for_kcad!(self, Vertex<'_>, vertices);
+    impl_fn_for_kcad!(Curve2d<'_>, curves_2d);
+    impl_fn_for_kcad!(Curve3d<'_>, curves_3d);
+    impl_fn_for_kcad!(Surface<'_>, surfaces);
 }
 
 impl std::fmt::Display for Error {
