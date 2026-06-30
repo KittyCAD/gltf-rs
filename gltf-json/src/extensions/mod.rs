@@ -20,6 +20,10 @@ pub mod image;
 #[cfg(feature = "KITTYCAD_boundary_representation")]
 pub mod kittycad_boundary_representation;
 
+/// Contains `Part` and other related data structures.
+#[cfg(feature = "KITTYCAD_part")]
+pub mod kittycad_part;
+
 /// Contains `Uuid`.
 #[cfg(feature = "KITTYCAD_uuid")]
 pub mod kittycad_uuid;

@@ -59,6 +59,20 @@ pub mod kittycad_boundary_representation {
     }
 }
 
+#[cfg(feature = "KITTYCAD_part")]
+pub mod kittycad_part {
+    use crate::Index;
+    use gltf_derive::Validate;
+    use serde_derive::{Deserialize, Serialize};
+
+    /// Reference to boundary representation solid.
+    #[derive(Clone, Debug, Deserialize, Serialize, Validate)]
+    pub struct KittyCadPart {
+        /// Index into top level solid array.
+        pub part: Index<crate::extensions::kittycad_part::Part>,
+    }
+}
+
 #[cfg(feature = "KHR_lights_punctual")]
 pub mod khr_lights_punctual {
     use crate::validation::{Checked, Error, Validate};

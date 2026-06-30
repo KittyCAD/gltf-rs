@@ -17,7 +17,7 @@ serde_json = { features = ["raw_value"], version = "1.0" }
 serde_repr = "0.1"
 
 [features]
-default = []
+default = ["KITTYCAD_part"]
 names = []
 extensions = []
 extras = []
@@ -32,5 +32,6 @@ KHR_materials_volume = []
 KHR_texture_transform = []
 KHR_materials_emissive_strength = []
 KITTYCAD_boundary_representation = []
+KITTYCAD_part = ["KITTYCAD_boundary_representation"]
 KITTYCAD_mesh_unit = []
 KITTYCAD_uuid = []

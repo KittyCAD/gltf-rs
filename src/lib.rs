@@ -131,6 +131,11 @@ pub mod khr_materials_variants;
 #[cfg_attr(docsrs, doc(cfg(feature = "KITTYCAD_boundary_representation")))]
 pub mod kittycad_boundary_representation;
 
+/// Support for the `KITTYCAD_part` extension.
+#[cfg(feature = "KITTYCAD_part")]
+#[cfg_attr(docsrs, doc(cfg(feature = "KITTYCAD_part")))]
+pub mod kittycad_part;
+
 /// Material properties of primitives.
 pub mod material;
 
@@ -634,6 +639,22 @@ impl Document {
     impl_fn_for_kcad!(Curve2d, curves_2d);
     impl_fn_for_kcad!(Curve3d, curves_3d);
     impl_fn_for_kcad!(Surface, surfaces);
+
+    // Returns an `Iterator`` that visits the parts contained in the glTF asset.
+    #[cfg(feature = "KITTYCAD_part")]
+    pub fn parts(&self) -> Option<impl ExactSizeIterator<Item = Part>> {
+        Some(
+            self.0
+                .extensions
+                .as_ref()?
+                .kittycad_part
+                .as_ref()?
+                .parts
+                .iter()
+                .enumerate()
+                .map(|(index, json)| Part::new(self, index, json)),
+        )
+    }
 }
 
 impl std::fmt::Display for Error {
