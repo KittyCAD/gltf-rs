@@ -131,6 +131,16 @@ pub mod khr_materials_variants;
 #[cfg_attr(docsrs, doc(cfg(feature = "KITTYCAD_boundary_representation")))]
 pub mod kittycad_boundary_representation;
 
+/// Support for the `KITTYCAD_model_based_definition` extension.
+#[cfg(feature = "KITTYCAD_model_based_definition")]
+#[cfg_attr(docsrs, doc(cfg(feature = "KITTYCAD_model_based_definition")))]
+pub mod kittycad_model_based_definition;
+
+/// Support for the `KITTYCAD_part` extension.
+#[cfg(feature = "KITTYCAD_part")]
+#[cfg_attr(docsrs, doc(cfg(feature = "KITTYCAD_part")))]
+pub mod kittycad_part;
+
 /// Material properties of primitives.
 pub mod material;
 
@@ -183,6 +193,12 @@ pub use self::import::import_slice;
 pub use self::kittycad_boundary_representation::{
     Curve2d, Curve3d, Edge, Face, Loop, Shell, Solid, Surface, Vertex,
 };
+#[cfg(feature = "KITTYCAD_model_based_definition")]
+#[doc(inline)]
+pub use self::kittycad_model_based_definition::Overlay;
+#[cfg(feature = "KITTYCAD_part")]
+#[doc(inline)]
+pub use self::kittycad_part::Part;
 #[doc(inline)]
 pub use self::material::Material;
 #[doc(inline)]
@@ -522,7 +538,7 @@ impl Document {
     /// `KHR_lights_punctual` extension.
     #[cfg(feature = "KHR_lights_punctual")]
     #[cfg_attr(docsrs, doc(cfg(feature = "KHR_lights_punctual")))]
-    pub fn lights(&self) -> Option<iter::Lights> {
+    pub fn lights(&self) -> Option<iter::Lights<'_>> {
         let iter = self
             .0
             .extensions
@@ -543,7 +559,7 @@ impl Document {
     /// `KHR_materials_variants` extension.
     #[cfg(feature = "KHR_materials_variants")]
     #[cfg_attr(docsrs, doc(cfg(feature = "KHR_materials_variants")))]
-    pub fn variants(&self) -> Option<iter::Variants> {
+    pub fn variants(&self) -> Option<iter::Variants<'_>> {
         let iter = self
             .0
             .extensions
@@ -634,6 +650,38 @@ impl Document {
     impl_fn_for_kcad!(Curve2d<'_>, curves_2d);
     impl_fn_for_kcad!(Curve3d<'_>, curves_3d);
     impl_fn_for_kcad!(Surface<'_>, surfaces);
+
+    /// Returns an `Iterator` that visits the parts contained in the glTF asset.
+    #[cfg(feature = "KITTYCAD_part")]
+    pub fn parts(&self) -> Option<impl ExactSizeIterator<Item = Part<'_>>> {
+        Some(
+            self.0
+                .extensions
+                .as_ref()?
+                .kittycad_part
+                .as_ref()?
+                .parts
+                .iter()
+                .enumerate()
+                .map(|(index, json)| Part::new(self, index, json)),
+        )
+    }
+
+    /// Returns an `Iterator` that visits the MBD overlays contained in the glTF asset.
+    #[cfg(feature = "KITTYCAD_model_based_definition")]
+    pub fn overlays(&self) -> Option<impl ExactSizeIterator<Item = Overlay<'_>>> {
+        Some(
+            self.0
+                .extensions
+                .as_ref()?
+                .kittycad_model_based_definition
+                .as_ref()?
+                .overlays
+                .iter()
+                .enumerate()
+                .map(|(index, json)| Overlay::new(self, index, json)),
+        )
+    }
 }
 
 impl std::fmt::Display for Error {
