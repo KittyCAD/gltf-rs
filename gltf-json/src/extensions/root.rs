@@ -32,6 +32,14 @@ pub struct Root {
     )]
     pub kittycad_boundary_representation: Option<KittyCadBoundaryRepresentation>,
 
+    #[cfg(feature = "KITTYCAD_model_based_definition")]
+    #[serde(
+        default,
+        rename = "KITTYCAD_model_based_definition",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub kittycad_model_based_definition: Option<KittyCadModelBasedDefinition>,
+
     #[cfg(feature = "KITTYCAD_part")]
     #[serde(
         default,
@@ -195,5 +203,33 @@ impl crate::root::Get<crate::extensions::kittycad_part::Part> for crate::Root {
 impl crate::root::Get<crate::extensions::kittycad_part::Part> for crate::extensions::root::KittyCadPart {
     fn get(&self, index: crate::Index<crate::extensions::kittycad_part::Part>) -> Option<&crate::extensions::kittycad_part::Part> {
         self.parts.get(index.value())
+    }
+}
+#[cfg(feature = "KITTYCAD_model_based_definition")]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize, Validate)]
+#[serde(rename_all = "camelCase")]
+#[schemars(rename = "KITTYCAD_model_based_definition")]
+pub struct KittyCadModelBasedDefinition {
+    /// Overlays.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub overlays: Vec<crate::extensions::kittycad_model_based_definition::Overlay>,
+}
+
+#[cfg(feature = "KITTYCAD_model_based_definition")]
+impl crate::root::Get<crate::extensions::kittycad_model_based_definition::Overlay> for crate::Root {
+    fn get(&self, index: crate::Index<crate::extensions::kittycad_model_based_definition::Overlay>) -> Option<&crate::extensions::kittycad_model_based_definition::Overlay> {
+        self.extensions
+            .as_ref()?
+            .kittycad_model_based_definition
+            .as_ref()?
+            .overlays
+            .get(index.value())
+    }
+}
+
+#[cfg(feature = "KITTYCAD_model_based_definition")]
+impl crate::root::Get<crate::extensions::kittycad_model_based_definition::Overlay> for crate::extensions::root::KittyCadModelBasedDefinition {
+    fn get(&self, index: crate::Index<crate::extensions::kittycad_model_based_definition::Overlay>) -> Option<&crate::extensions::kittycad_model_based_definition::Overlay> {
+        self.overlays.get(index.value())
     }
 }

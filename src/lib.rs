@@ -131,6 +131,11 @@ pub mod khr_materials_variants;
 #[cfg_attr(docsrs, doc(cfg(feature = "KITTYCAD_boundary_representation")))]
 pub mod kittycad_boundary_representation;
 
+/// Support for the `KITTYCAD_model_based_definition` extension.
+#[cfg(feature = "KITTYCAD_model_based_definition")]
+#[cfg_attr(docsrs, doc(cfg(feature = "KITTYCAD_model_based_definition")))]
+pub mod kittycad_model_based_definition;
+
 /// Support for the `KITTYCAD_part` extension.
 #[cfg(feature = "KITTYCAD_part")]
 #[cfg_attr(docsrs, doc(cfg(feature = "KITTYCAD_part")))]
@@ -188,6 +193,12 @@ pub use self::import::import_slice;
 pub use self::kittycad_boundary_representation::{
     Curve2d, Curve3d, Edge, Face, Loop, Shell, Solid, Surface, Vertex,
 };
+#[cfg(feature = "KITTYCAD_model_based_definition")]
+#[doc(inline)]
+pub use self::kittycad_model_based_definition::Overlay;
+#[cfg(feature = "KITTYCAD_part")]
+#[doc(inline)]
+pub use self::kittycad_part::Part;
 #[doc(inline)]
 pub use self::material::Material;
 #[doc(inline)]
@@ -640,7 +651,7 @@ impl Document {
     impl_fn_for_kcad!(Curve3d, curves_3d);
     impl_fn_for_kcad!(Surface, surfaces);
 
-    // Returns an `Iterator`` that visits the parts contained in the glTF asset.
+    // Returns an `Iterator` that visits the parts contained in the glTF asset.
     #[cfg(feature = "KITTYCAD_part")]
     pub fn parts(&self) -> Option<impl ExactSizeIterator<Item = Part>> {
         Some(
@@ -653,6 +664,22 @@ impl Document {
                 .iter()
                 .enumerate()
                 .map(|(index, json)| Part::new(self, index, json)),
+        )
+    }
+
+    // Returns an `Iterator` that visits the MBD overlays contained in the glTF asset.
+    #[cfg(feature = "KITTYCAD_model_based_definition")]
+    pub fn overlays(&self) -> Option<impl ExactSizeIterator<Item = Overlay>> {
+        Some(
+            self.0
+                .extensions
+                .as_ref()?
+                .kittycad_model_based_definition
+                .as_ref()?
+                .overlays
+                .iter()
+                .enumerate()
+                .map(|(index, json)| Overlay::new(self, index, json)),
         )
     }
 }

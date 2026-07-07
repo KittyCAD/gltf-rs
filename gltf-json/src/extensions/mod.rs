@@ -24,6 +24,10 @@ pub mod kittycad_boundary_representation;
 #[cfg(feature = "KITTYCAD_part")]
 pub mod kittycad_part;
 
+/// Contains data structures related to model-based definition and product manufacturing information.
+#[cfg(feature = "KITTYCAD_model_based_definition")]
+pub mod kittycad_model_based_definition;
+
 /// Contains `Uuid`.
 #[cfg(feature = "KITTYCAD_uuid")]
 pub mod kittycad_uuid;
