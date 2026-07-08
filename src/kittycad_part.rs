@@ -1,7 +1,6 @@
-use crate::{Document, Mesh};
+use crate::{Document, Solid};
 
-use json::extensions::kittycad_boundary_representation as brep;
-use json::extensions::kittycad_part as ext;
+use json::extensions::kittycad_part as part;
 
 /// Part definition.
 #[derive(Clone, Debug)]
@@ -13,12 +12,12 @@ pub struct Part<'a> {
     index: usize,
 
     /// The corresponding JSON struct.
-    json: &'a ext::Part,
+    json: &'a part::Part,
 }
 
 impl<'a> Part<'a> {
     /// Constructs a `Part`.
-    pub(crate) fn new(document: &'a Document, index: usize, json: &'a ext::Part) -> Self {
+    pub(crate) fn new(document: &'a Document, index: usize, json: &'a part::Part) -> Self {
         Self {
             document,
             index,
@@ -48,7 +47,7 @@ impl<'a> Part<'a> {
     }
 
     /// Returns an `Iterator` visits the part's solid bodies.
-    pub fn solids(&self) -> impl ExactSizeIterator<Item = brep::Solid<'a>> {
+    pub fn solids(&self) -> impl ExactSizeIterator<Item = Solid<'a>> {
         self.json
             .solids
             .iter()

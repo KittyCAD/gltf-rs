@@ -97,7 +97,7 @@ pub struct Frame {
     /// the callouts in the MBD frame.
     ///
     /// For example, two tolerances are grouped the position tolerance feature represented by ⌖ in the diagram below.
-    /// 
+    ///
     /// ```
     /// ┌───────┬───────┬───┐
     /// │       │ ⌀ .04 │ A │
@@ -246,7 +246,7 @@ pub struct Tolerance {
 pub enum Limit {
     /// Tolerance zone.
     #[serde(rename_all = "camelCase")]
-    Zone { max_deviation: f64},
+    Zone { max_deviation: f64 },
 
     /// `min-max`
     #[serde(rename_all = "camelCase")]
@@ -447,7 +447,9 @@ mod tests {
             let mut callouts = Vec::new();
             callouts.push(Callout::feature(Feature::Position));
             callouts.push(Callout::modifier(Modifier::Diameter));
-            callouts.push(Callout::limit(Limit::Zone { max_deviation: 0.04 }));
+            callouts.push(Callout::limit(Limit::Zone {
+                max_deviation: 0.04,
+            }));
             callouts.push(Callout::datum('C'));
             callouts.push(Callout::datum('A'));
             callouts.push(Callout::datum('B'));
@@ -470,12 +472,16 @@ mod tests {
 
         {
             let mut callouts = Vec::new();
-            callouts.push(Callout::limit(Limit::Zone { max_deviation: 0.05 }));
+            callouts.push(Callout::limit(Limit::Zone {
+                max_deviation: 0.05,
+            }));
             callouts.push(Callout::datum('D'));
             callouts.push(Callout::datum('B'));
             callouts.push(Callout::datum('C'));
             callouts.push(Callout::control(Control::NextLine));
-            callouts.push(Callout::limit(Limit::Zone { max_deviation: 0.01 }));
+            callouts.push(Callout::limit(Limit::Zone {
+                max_deviation: 0.01,
+            }));
             callouts.push(Callout::datum('D'));
 
             let mut frame = Frame::new(callouts);

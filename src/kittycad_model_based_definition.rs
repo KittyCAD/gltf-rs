@@ -65,10 +65,7 @@ pub struct Frame<'a> {
 impl<'a> Frame<'a> {
     /// Constructs a `Frame`.
     pub(crate) fn new(document: &'a Document, json: &'a mbd::Frame) -> Self {
-        Self {
-            document,
-            json,
-        }
+        Self { document, json }
     }
 
     /// Optional user-defined name for this object.
@@ -78,7 +75,7 @@ impl<'a> Frame<'a> {
     }
 
     /// Returns an `Iterator` visits the frame's callouts.
-    pub fn frames(&self) -> impl ExactSizeIterator<Item = Callout<'a>> {
+    pub fn callouts(&self) -> impl ExactSizeIterator<Item = Callout<'a>> {
         self.json
             .callouts
             .iter()
@@ -104,10 +101,7 @@ pub struct Callout<'a> {
 impl<'a> Callout<'a> {
     /// Constructs a `Callout`.
     pub(crate) fn new(document: &'a Document, json: &'a mbd::Callout) -> Self {
-        Self {
-            document,
-            json,
-        }
+        Self { document, json }
     }
 
     /// Optional user-defined name for this object.
@@ -120,21 +114,13 @@ impl<'a> Callout<'a> {
     pub fn element(&self) -> Element<'a> {
         match self.json.type_ {
             mbd::CalloutType::Datum => {
-                let json = self.json.datum.as_ref().unwrap()
+                let json = self.json.datum.as_ref().unwrap();
                 Element::Datum(Datum::new(self.document, json))
             }
-            mbd::CalloutType::Feature => {
-                Element::Feature(self.json.feature.unwrap())
-            }
-            mbd::CalloutType::Modifier => {
-                Element::Modifier(self.json.modifier.unwrap())
-            }
-            mbd::CalloutType::Limit => {
-                Element::Limit(self.json.limit.unwrap())
-            }
-            mbd::CalloutType::Control => {
-                Element::Control(self.json.control.unwrap())
-            }
+            mbd::CalloutType::Feature => Element::Feature(self.json.feature.unwrap()),
+            mbd::CalloutType::Modifier => Element::Modifier(self.json.modifier.unwrap()),
+            mbd::CalloutType::Limit => Element::Limit(self.json.limit.unwrap()),
+            mbd::CalloutType::Control => Element::Control(self.json.control.unwrap()),
         }
     }
 
@@ -167,6 +153,7 @@ pub enum Element<'a> {
 #[derive(Clone, Debug)]
 pub struct Datum<'a> {
     /// The parent `Document` struct.
+    #[allow(unused)]
     pub(crate) document: &'a Document,
 
     /// The corresponding JSON struct.
@@ -176,10 +163,7 @@ pub struct Datum<'a> {
 impl<'a> Datum<'a> {
     /// Constructs a `Datum`.
     pub(crate) fn new(document: &'a Document, json: &'a mbd::Datum) -> Self {
-        Self {
-            document,
-            json,
-        }
+        Self { document, json }
     }
 
     /// Returns the ID of the datum.

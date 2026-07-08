@@ -28,6 +28,10 @@ pub mod kittycad_part;
 #[cfg(feature = "KITTYCAD_model_based_definition")]
 pub mod kittycad_model_based_definition;
 
+/// Contains `Unit` and other related data structures.
+#[cfg(feature = "KITTYCAD_unit")]
+pub mod kittycad_unit;
+
 /// Contains `Uuid`.
 #[cfg(feature = "KITTYCAD_uuid")]
 pub mod kittycad_uuid;
@@ -70,6 +74,12 @@ pub const ENABLED_EXTENSIONS: &[&str] = &[
     "KHR_materials_emissive_strength",
     #[cfg(feature = "KITTYCAD_boundary_representation")]
     "KITTYCAD_boundary_representation",
+    #[cfg(feature = "KITTYCAD_model_based_definition")]
+    "KITTYCAD_model_based_definition",
+    #[cfg(feature = "KITTYCAD_part")]
+    "KITTYCAD_part",
+    #[cfg(feature = "KITTYCAD_unit")]
+    "KITTYCAD_unit",
     #[cfg(feature = "KITTYCAD_uuid")]
     "KITTYCAD_uuid",
 ];
@@ -84,5 +94,8 @@ pub const SUPPORTED_EXTENSIONS: &[&str] = &[
     "KHR_materials_transmission",
     "KHR_materials_ior",
     "KITTYCAD_boundary_representation",
+    "KITTYCAD_model_based_definition",
+    "KITTYCAD_part",
+    "KITTYCAD_unit",
     "KITTYCAD_uuid",
 ];
