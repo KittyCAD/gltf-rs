@@ -32,6 +32,15 @@ pub struct Node {
     pub kittycad_boundary_representation:
         Option<kittycad_boundary_representation::KittyCadBoundaryRepresentation>,
 
+    #[cfg(feature = "KITTYCAD_model_based_definition")]
+    #[serde(
+        default,
+        rename = "KITTYCAD_model_based_definition",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub kittycad_model_based_definition:
+        Option<kittycad_model_based_definition::KittyCadModelBasedDefinition>,
+
     #[cfg(feature = "KITTYCAD_uuid")]
     #[serde(
         default,
@@ -59,13 +68,27 @@ pub mod kittycad_boundary_representation {
     }
 }
 
+#[cfg(feature = "KITTYCAD_model_based_definition")]
+pub mod kittycad_model_based_definition {
+    use crate::Index;
+    use gltf_derive::Validate;
+    use serde_derive::{Deserialize, Serialize};
+
+    /// Placement of an MBD overlay in the scene.
+    #[derive(Clone, Debug, Deserialize, Serialize, Validate)]
+    pub struct KittyCadModelBasedDefinition {
+        /// Index into top level solid array.
+        pub overlay: Index<crate::extensions::kittycad_model_based_definition::Overlay>,
+    }
+}
+
 #[cfg(feature = "KITTYCAD_part")]
 pub mod kittycad_part {
     use crate::Index;
     use gltf_derive::Validate;
     use serde_derive::{Deserialize, Serialize};
 
-    /// Reference to boundary representation solid.
+    /// Reference to part definition.
     #[derive(Clone, Debug, Deserialize, Serialize, Validate)]
     pub struct KittyCadPart {
         /// Index into top level solid array.
