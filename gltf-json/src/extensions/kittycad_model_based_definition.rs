@@ -1,10 +1,77 @@
 //! Model-based definition and product manufacturing information.
 
 use crate::validation::Validate;
-use crate::Extras;
+use crate::{Extras, Index};
 use gltf_derive::Validate;
 use schemars::JsonSchema;
 use serde_derive::{Deserialize, Serialize};
+
+use crate::extensions::kittycad_boundary_representation as brep;
+use crate::extensions::kittycad_part as part;
+
+#[doc(inline)]
+pub use datum::Datum;
+
+/// Datum specific data structures.
+pub mod datum {
+    use super::*;
+
+    /// Datum definition.
+    #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+    pub struct Datum {
+        /// The ID of the datum feature.
+        pub id: String,
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
+    }
+
+    /// A datum feature.
+    #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+    pub struct Feature {
+        /// Datum feature references.
+        pub references: Vec<Reference>,
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
+    }
+
+    /// A datum feature reference.
+    #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+    pub struct Reference {
+        /// The ID of the referenced datum.
+        pub id: String,
+
+        /// Datum modifiers.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        pub modifiers: Vec<Modifier>,
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
+    }
+
+    /// A datum target point.
+    #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+    pub struct Target {
+        /// Target area size.
+        pub size: String,
+
+        /// The ID of the datum target.
+        pub id: String,
+
+        /// Specific target number.
+        pub number: u32,
+    }
+}
 
 /// The drawing area for MBD items.
 #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
@@ -14,13 +81,16 @@ pub struct Overlay {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 
+    /// The part this overlay is annotating.
+    pub part: Index<part::Part>,
+
     /// Feature control frames.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub frames: Vec<Frame>,
 
     /// Datum target points.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub targets: Vec<Target>,
+    pub targets: Vec<datum::Target>,
 
     /// Human-readable textual information.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -33,10 +103,20 @@ pub struct Overlay {
     pub extras: Extras,
 }
 
+/// Identified feature of a part.
+#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Aspect {
+    /// Identifies a particular face.
+    Face,
+}
+
+impl Validate for Aspect {}
+
 /// Symbol part of a leader line.
 #[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum LeaderLineSymbol {
+pub enum Symbol {
     /// ●
     ///
     /// Filled circle.
@@ -63,11 +143,11 @@ pub enum LeaderLineSymbol {
     FilledArrow,
 }
 
-impl Validate for LeaderLineSymbol {}
+impl Validate for Symbol {}
 
 /// Waypoint for a leader line.
 #[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Serialize, Validate)]
-pub struct LeaderLinePoint {
+pub struct Waypoint {
     /// X coordinate in the overlay plane.
     pub x: f64,
 
@@ -76,20 +156,30 @@ pub struct LeaderLinePoint {
 
     /// Endpoint symbol.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub end: Option<LeaderLineSymbol>,
+    pub end: Option<Symbol>,
+}
+
+/// Association between an annotation and a part feature.
+#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct Pointer {
+    /// Feature aspect of the pointee, i.e., the index type.
+    pub aspect: Aspect,
+
+    /// The index of the identified feature.
+    pub index: u32,
+
+    /// The leader line array begins at the callout boundary and ends at the model boundary.
+    pub leader_line: Vec<Waypoint>,
 }
 
 /// A feature control frame.
 #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
 pub struct Frame {
-    /// Optional name for this frame.
+    /// Optional name for this feature control frame.
     #[cfg(feature = "names")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-
-    /// Text to appear above the feature control box.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub text_above: Option<String>,
 
     /// Grouping feature.
     ///
@@ -106,19 +196,14 @@ pub struct Frame {
     /// └───────┴───────┴───┘
     /// ```
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub group: Option<Feature>,
+    pub group: Option<Characteristic>,
 
-    /// Callouts.
+    /// Required feature tolerances.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub callouts: Vec<Callout>,
+    pub tolerances: Vec<Tolerance>,
 
-    /// Text to appear below the feature control box.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub text_below: Option<String>,
-
-    /// The leader line array begins at the callout boundary and ends at the model boundary.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub leader_line: Vec<LeaderLinePoint>,
+    /// Identification of the feature the tolerances apply to.
+    pub pointer: Pointer,
 
     /// Optional application specific data.
     #[serde(default)]
@@ -128,110 +213,167 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn new(callouts: Vec<Callout>) -> Self {
+    /// Constructs a simple feature control frame that applies a set of tolerances to a particular face.
+    pub fn new(tolerances: Vec<Tolerance>, face: Index<brep::Face>) -> Self {
         Self {
             name: None,
-            callouts,
-            text_above: None,
-            text_below: None,
+            tolerances,
             group: None,
-            leader_line: Vec::new(),
+            pointer: Pointer {
+                aspect: Aspect::Face,
+                index: face.value() as u32,
+                leader_line: Vec::new(),
+            },
             extras: Default::default(),
         }
     }
 }
 
-/// A datum target point.
-#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
-pub struct Target {
-    /// Target area size.
-    pub size: String,
-
-    /// The datum target.
-    pub datum: Datum,
-}
-
 #[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Serialize)]
 pub enum Modifier {
-    /// Diameter tolerance zone.
-    #[serde(rename = "D")]
-    Diameter,
-
     /// Only gravity applies to the part.
+    ///
+    /// Represented by the Ⓕ symbol.
     #[serde(rename = "F")]
     FreeState,
 
     /// Perfect form not required at MMC nor LMC.
+    ///
+    /// Represented by the Ⓘ symbol.
     #[serde(rename = "I")]
     Independency,
 
     /// Least material condition.
+    ///
+    /// Represented by the Ⓛ symbol.
     #[serde(rename = "L")]
     LeastMaterialCondition,
 
     /// Maximum material condition.
+    ///
+    /// Represented by the Ⓜ symbol.
     #[serde(rename = "M")]
     MaximumMaterialCondition,
 
     /// Projected tolerance zone.
+    ///
+    /// Represented by the Ⓟ symbol.
     #[serde(rename = "P")]
     ProjectedToleranceZone,
 
     /// Unequally displaced profile tolerance zone.
+    ///
+    /// Represented by the Ⓤ symbol.
     #[serde(rename = "U")]
     UnequallyDisplacedProfile,
 
     /// Tangent plane of a surface.
+    ///
+    /// Represented by the Ⓣ symbol.
     #[serde(rename = "T")]
     TangentPlane,
 }
 
 impl Validate for Modifier {}
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
-pub struct Datum {
-    /// The ID of the datum feature.
-    pub id: String,
-
-    /// Optional application specific data.
-    #[serde(default)]
-    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
-    #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
-    pub extras: Extras,
-}
-
+/// Geometric characteristic.
 #[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum Feature {
+pub enum Characteristic {
+    /// Permitted projected deviation from a line.
     Straightness,
+
+    /// Permitted projected deviation from a plane.
     Flatness,
+
+    /// Permitted projected deviation from a circle.
     Circularity,
+
+    /// Permitted projected deviation from a cylinder.
     Cylindricity,
+
+    /// Permitted projected deviation from a parallel referenced datum.
     Parallelism,
+
+    /// Permitted perpendicular deviation from a referenced datum.
     Perpendicularity,
+
+    /// Permitted angular deviation from a referenced datum.
     Angularity,
 
+    /// Permitted projected deviation along a curve or cross-section.
     LineProfile,
+
+    /// Permitted projected deviation across a surface.
     SurfaceProfile,
 
+    /// Permitted deviation of a particular point from a specified datum.
     Position,
+
+    /// Permitted deviation of median points of circular features relative to a referenced datum axis.
     Concentricity,
+
+    /// Permitted deviation of median points relative to a referenced datum center plane.
     Symmetry,
 
+    /// Permitted circular deviation of a surface as it is rotated about a referenced datum axis.
     Runout,
+
+    /// Permitted cumulative circular deviation of a surface as it is rotated about a referenced datum axis.
     TotalRunout,
 }
 
-impl Validate for Feature {}
+impl Validate for Characteristic {}
+
+/// Tolerance measurement modifier.
+#[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Measurement {
+    /// Prefixes the tolerance value with ⌀.
+    Diameter,
+
+    /// Prefixes the tolerance value with R.
+    Radius,
+
+    /// Prefixes the tolerance value with S⌀.
+    SphericalDiameter,
+
+    /// Prefixes the tolerance value with SR.
+    SphericalRadius,
+}
+
+impl Validate for Measurement {}
 
 /// A tolerance specification for a particular feature.
 #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+#[serde(rename_all = "camelCase")]
 pub struct Tolerance {
-    /// Measurable feature.
-    pub feature: Feature,
+    /// Optional name for this overlay.
+    #[cfg(feature = "names")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+
+    /// Tolerance measurement modifier.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub measurement: Option<Measurement>,
+
+    /// Measurable geometric characteristic.
+    ///
+    /// This must be `None` when the tolerance belongs to group
+    /// and must have a value otherwise.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub characteristic: Option<Characteristic>,
 
     /// Numerical limit of the feature.
     pub limit: Limit,
+
+    /// Tolerance modifiers.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub modifiers: Vec<Modifier>,
+
+    /// Datum features.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub features: Vec<datum::Feature>,
 
     /// Optional application specific data.
     #[serde(default)]
@@ -263,159 +405,6 @@ pub enum Limit {
 
 impl Validate for Limit {}
 
-/// Control sequence used to position callouts in a MBD frame.
-#[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum Control {
-    /// Following callouts are positioned on the next line.
-    NextLine,
-
-    /// Groups following datum callouts into a compound datum.
-    ///
-    /// For example, 'A' followed by 'B' becomes "A-B" in the MBD frame.
-    BeginCompoundDatum,
-
-    /// Stops grouping datum callouts.
-    EndCompoundDatum,
-}
-
-impl Validate for Control {}
-
-#[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum CalloutType {
-    /// Datum callout.
-    Datum,
-
-    /// Feature specification.
-    Feature,
-
-    /// Feature modifier.
-    Modifier,
-
-    /// Numerical limit of a particular feature.
-    Limit,
-
-    /// Callout control sequence.
-    Control,
-}
-
-impl Validate for CalloutType {}
-
-/// Specific callout in a MBD frame.
-#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
-pub struct Callout {
-    /// Optional name for this frame.
-    #[cfg(feature = "names")]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-
-    /// Specifies the callout type.
-    #[serde(rename = "type")]
-    pub type_: CalloutType,
-
-    /// Datum callout.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub datum: Option<Datum>,
-
-    /// Feature specification.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub feature: Option<Feature>,
-
-    /// Feature modifier.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub modifier: Option<Modifier>,
-
-    /// Numerical limit of a particular feature.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub limit: Option<Limit>,
-
-    /// Callout control sequence.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub control: Option<Control>,
-
-    /// Optional application specific data.
-    #[serde(default)]
-    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
-    #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
-    pub extras: Extras,
-}
-
-impl Callout {
-    /// Datum callout.
-    pub fn datum(c: char) -> Self {
-        Self {
-            name: None,
-            type_: CalloutType::Datum,
-            datum: Some(Datum {
-                id: c.to_string(),
-                extras: Default::default(),
-            }),
-            feature: None,
-            modifier: None,
-            limit: None,
-            control: None,
-            extras: Default::default(),
-        }
-    }
-
-    /// Feature specification.
-    pub fn feature(feature: Feature) -> Self {
-        Self {
-            name: None,
-            type_: CalloutType::Feature,
-            datum: None,
-            feature: Some(feature),
-            modifier: None,
-            limit: None,
-            control: None,
-            extras: Default::default(),
-        }
-    }
-
-    /// Feature modifier.
-    pub fn modifier(modifier: Modifier) -> Self {
-        Self {
-            name: None,
-            type_: CalloutType::Modifier,
-            datum: None,
-            feature: None,
-            modifier: Some(modifier),
-            limit: None,
-            control: None,
-            extras: Default::default(),
-        }
-    }
-
-    /// Numerical limit of a particular feature.
-    pub fn limit(limit: Limit) -> Self {
-        Self {
-            name: None,
-            type_: CalloutType::Limit,
-            datum: None,
-            feature: None,
-            modifier: None,
-            limit: Some(limit),
-            control: None,
-            extras: Default::default(),
-        }
-    }
-
-    /// Callout control sequence.
-    pub fn control(control: Control) -> Self {
-        Self {
-            name: None,
-            type_: CalloutType::Control,
-            datum: None,
-            feature: None,
-            modifier: None,
-            limit: None,
-            control: Some(control),
-            extras: Default::default(),
-        }
-    }
-}
-
 /// Block of text.
 #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
 pub struct TextBlock {
@@ -433,62 +422,124 @@ pub struct TextBlock {
 mod tests {
     use super::*;
 
+    /// Straightness tolerance example.
+    ///
+    /// ```
+    /// ┌───────┬────────┬───┐
+    /// │  ───  │ ⌀.04Ⓜ │ A │
+    /// └───────┴────────┴───┘
+    /// ```
     #[test]
-    fn example1() {
-        let mut overlay = Overlay {
+    fn straightness_with_mmc_and_datum_reference() {
+        let stub_part_index = Index::new(123);
+        let stub_face_index = 456;
+        let overlay = Overlay {
             name: None,
-            frames: Vec::new(),
-            text_blocks: Vec::new(),
             extras: Default::default(),
+            part: stub_part_index,
+            text_blocks: Vec::new(),
             targets: Vec::new(),
+            frames: vec![Frame {
+                name: None,
+                group: None,
+                pointer: Pointer {
+                    aspect: Aspect::Face,
+                    index: stub_face_index,
+                    leader_line: Vec::new(),
+                },
+                extras: Default::default(),
+                tolerances: vec![Tolerance {
+                    name: None,
+                    extras: Default::default(),
+                    measurement: Some(Measurement::Diameter),
+                    characteristic: Some(Characteristic::Straightness),
+                    limit: Limit::Zone {
+                        max_deviation: 0.04,
+                    },
+                    modifiers: vec![Modifier::MaximumMaterialCondition],
+                    features: vec![datum::Feature {
+                        extras: Default::default(),
+                        references: vec![datum::Reference {
+                            id: "A".to_string(),
+                            modifiers: Vec::new(),
+                            extras: Default::default(),
+                        }],
+                    }],
+                }],
+            }],
         };
-
-        {
-            let mut callouts = Vec::new();
-            callouts.push(Callout::feature(Feature::Position));
-            callouts.push(Callout::modifier(Modifier::Diameter));
-            callouts.push(Callout::limit(Limit::Zone {
-                max_deviation: 0.04,
-            }));
-            callouts.push(Callout::datum('C'));
-            callouts.push(Callout::datum('A'));
-            callouts.push(Callout::datum('B'));
-            overlay.frames.push(Frame::new(callouts));
-        }
-
         let json = serde_json::to_string_pretty(&overlay).unwrap();
         println!("{json}");
     }
 
+    /// Grouped tolerances example.
+    ///
+    /// ```
+    /// ┌───────┬───────┬───┐
+    /// │       │ ⌀ .04 │ A │
+    /// │   ⌖   ├───────┼───┤
+    /// │       │ ⌀ .02 │ B │
+    /// └───────┴───────┴───┘
+    /// ```
     #[test]
-    fn example2() {
-        let mut overlay = Overlay {
+    fn grouped_position_tolerances() {
+        let stub_part_index = Index::new(123);
+        let stub_face_index = 456;
+        let overlay = Overlay {
             name: None,
-            frames: Vec::new(),
-            text_blocks: Vec::new(),
             extras: Default::default(),
+            part: stub_part_index,
+            text_blocks: Vec::new(),
             targets: Vec::new(),
+            frames: vec![Frame {
+                name: None,
+                extras: Default::default(),
+                group: Some(Characteristic::Position),
+                pointer: Pointer {
+                    aspect: Aspect::Face,
+                    index: stub_face_index,
+                    leader_line: Vec::new(),
+                },
+                tolerances: vec![
+                    Tolerance {
+                        name: None,
+                        extras: Default::default(),
+                        measurement: Some(Measurement::Diameter),
+                        characteristic: None,
+                        limit: Limit::Zone {
+                            max_deviation: 0.04,
+                        },
+                        modifiers: Vec::new(),
+                        features: vec![datum::Feature {
+                            extras: Default::default(),
+                            references: vec![datum::Reference {
+                                id: "A".to_string(),
+                                modifiers: Vec::new(),
+                                extras: Default::default(),
+                            }],
+                        }],
+                    },
+                    Tolerance {
+                        name: None,
+                        extras: Default::default(),
+                        measurement: Some(Measurement::Diameter),
+                        characteristic: None,
+                        limit: Limit::Zone {
+                            max_deviation: 0.02,
+                        },
+                        modifiers: Vec::new(),
+                        features: vec![datum::Feature {
+                            extras: Default::default(),
+                            references: vec![datum::Reference {
+                                id: "B".to_string(),
+                                modifiers: Vec::new(),
+                                extras: Default::default(),
+                            }],
+                        }],
+                    },
+                ],
+            }],
         };
-
-        {
-            let mut callouts = Vec::new();
-            callouts.push(Callout::limit(Limit::Zone {
-                max_deviation: 0.05,
-            }));
-            callouts.push(Callout::datum('D'));
-            callouts.push(Callout::datum('B'));
-            callouts.push(Callout::datum('C'));
-            callouts.push(Callout::control(Control::NextLine));
-            callouts.push(Callout::limit(Limit::Zone {
-                max_deviation: 0.01,
-            }));
-            callouts.push(Callout::datum('D'));
-
-            let mut frame = Frame::new(callouts);
-            frame.group = Some(Feature::SurfaceProfile);
-            overlay.frames.push(frame);
-        }
-
         let json = serde_json::to_string_pretty(&overlay).unwrap();
         println!("{json}");
     }

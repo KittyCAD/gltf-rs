@@ -1,8 +1,9 @@
 use crate::Document;
 
-use json::extensions::kittycad_model_based_definition as mbd;
+use json::extensions::kittycad_model_based_definition::{self as mbd, Measurement};
 
-pub use mbd::{Control, Feature, Limit, Modifier};
+#[doc(inline)]
+pub use mbd::{Characteristic, Limit, Modifier};
 
 /// Overlay definition.
 #[derive(Clone, Debug)]
@@ -74,12 +75,17 @@ impl<'a> Frame<'a> {
         self.json.name.as_deref()
     }
 
-    /// Returns an `Iterator` visits the frame's callouts.
-    pub fn callouts(&self) -> impl ExactSizeIterator<Item = Callout<'a>> {
+    /// Returns the grouping characteristic.
+    pub fn group(&self) -> Option<Characteristic> {
+        self.json.group
+    }
+
+    /// Returns an `Iterator` visits the frame's tolerances.
+    pub fn tolerances(&self) -> impl ExactSizeIterator<Item = Tolerance<'a>> {
         self.json
-            .callouts
+            .tolerances
             .iter()
-            .map(|json| Callout::new(self.document, json))
+            .map(|json| Tolerance::new(self.document, json))
     }
 
     /// Optional application specific data.
@@ -88,19 +94,19 @@ impl<'a> Frame<'a> {
     }
 }
 
-/// MBD callout.
+/// MBD tolerance specifier.
 #[derive(Clone, Debug)]
-pub struct Callout<'a> {
+pub struct Tolerance<'a> {
     /// The parent `Document` struct.
     pub(crate) document: &'a Document,
 
     /// The corresponding JSON struct.
-    json: &'a mbd::Callout,
+    json: &'a mbd::Tolerance,
 }
 
-impl<'a> Callout<'a> {
-    /// Constructs a `Callout`.
-    pub(crate) fn new(document: &'a Document, json: &'a mbd::Callout) -> Self {
+impl<'a> Tolerance<'a> {
+    /// Constructs a `Tolerance`.
+    pub(crate) fn new(document: &'a Document, json: &'a mbd::Tolerance) -> Self {
         Self { document, json }
     }
 
@@ -110,18 +116,34 @@ impl<'a> Callout<'a> {
         self.json.name.as_deref()
     }
 
-    /// Returns the callout element.
-    pub fn element(&self) -> Element<'a> {
-        match self.json.type_ {
-            mbd::CalloutType::Datum => {
-                let json = self.json.datum.as_ref().unwrap();
-                Element::Datum(Datum::new(self.document, json))
-            }
-            mbd::CalloutType::Feature => Element::Feature(self.json.feature.unwrap()),
-            mbd::CalloutType::Modifier => Element::Modifier(self.json.modifier.unwrap()),
-            mbd::CalloutType::Limit => Element::Limit(self.json.limit.unwrap()),
-            mbd::CalloutType::Control => Element::Control(self.json.control.unwrap()),
-        }
+    /// Returns the tolerance measurement modifier where applicable.
+    pub fn measurement(&self) -> Option<Measurement> {
+        self.json.measurement
+    }
+
+    /// Returns the geometric characteristic the tolerance applies to, where applicable.
+    ///
+    /// This will be `None` when the tolerance belongs to a group.
+    pub fn characteristic(&self) -> Option<Characteristic> {
+        self.json.characteristic
+    }
+
+    /// Returns the tolerance limit value.
+    pub fn limit(&self) -> Limit {
+        self.json.limit
+    }
+
+    /// Returns the tolerance modifiers.
+    pub fn modifiers(&self) -> &[Modifier] {
+        &self.json.modifiers
+    }
+
+    /// Returns an `Iterator` that visits the referenced datum features.
+    pub fn tolerances(&self) -> impl ExactSizeIterator<Item = Feature<'a>> {
+        self.json
+            .features
+            .iter()
+            .map(|json| Feature::new(self.document, json))
     }
 
     /// Optional application specific data.
@@ -130,23 +152,67 @@ impl<'a> Callout<'a> {
     }
 }
 
-/// A particular element of an MBD callout frame.
+/// MBD datum feature.
 #[derive(Clone, Debug)]
-pub enum Element<'a> {
-    /// Datum callout.
-    Datum(Datum<'a>),
+pub struct Feature<'a> {
+    /// The parent `Document` struct.
+    pub(crate) document: &'a Document,
 
-    /// Feature callout.
-    Feature(Feature),
+    /// The corresponding JSON struct.
+    json: &'a mbd::datum::Feature,
+}
 
-    /// Modifier callout.
-    Modifier(Modifier),
+impl<'a> Feature<'a> {
+    /// Constructs a `Feature`.
+    pub(crate) fn new(document: &'a Document, json: &'a mbd::datum::Feature) -> Self {
+        Self { document, json }
+    }
 
-    /// Limit callout.
-    Limit(Limit),
+    /// Returns an `Iterator` that visits the datum feature references.
+    pub fn references(&self) -> impl ExactSizeIterator<Item = Reference<'a>> {
+        self.json
+            .references
+            .iter()
+            .map(|json| Reference::new(self.document, json))
+    }
 
-    /// Control sequence.
-    Control(Control),
+    /// Optional application specific data.
+    pub fn extras(&self) -> &'a json::Extras {
+        &self.json.extras
+    }
+}
+
+/// MBD datum feature reference.
+#[derive(Clone, Debug)]
+pub struct Reference<'a> {
+    /// The parent `Document` struct.
+    #[allow(unused)]
+    pub(crate) document: &'a Document,
+
+    /// The corresponding JSON struct.
+    json: &'a mbd::datum::Reference,
+}
+
+impl<'a> Reference<'a> {
+    /// Constructs a `Feature`.
+    pub(crate) fn new(document: &'a Document, json: &'a mbd::datum::Reference) -> Self {
+        Self { document, json }
+    }
+
+    /// Returns the ID of the datum feature reference.
+    pub fn id(&self) -> &str {
+        &self.json.id
+    }
+
+    /// Returns the modifiers applied to the datum feature reference.
+    pub fn modifiers(&self) -> &[Modifier] {
+        &self.json.modifiers
+    }
+
+    /// Optional application specific data.
+    pub fn extras(&self) -> &'a json::Extras {
+        &self.json.extras
+    }
 }
 
 /// MBD datum callout.
