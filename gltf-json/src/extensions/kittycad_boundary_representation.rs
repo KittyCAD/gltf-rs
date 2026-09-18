@@ -1225,6 +1225,10 @@ pub struct Solid {
 
     /// Optional application specific data.
     #[serde(default)]
+    #[cfg_attr(
+        feature = "extras",
+        serde(deserialize_with = "crate::extras::preserved::deserialize")
+    )]
     #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,

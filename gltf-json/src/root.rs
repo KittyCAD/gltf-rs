@@ -69,6 +69,10 @@ pub struct Root {
 
     /// Optional application specific data.
     #[serde(default)]
+    #[cfg_attr(
+        feature = "extras",
+        serde(deserialize_with = "crate::extras::preserved::deserialize")
+    )]
     #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
@@ -141,12 +145,12 @@ impl Root {
     /// Deserialize from a JSON string slice.
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(str_: &str) -> Result<Self, Error> {
-        serde_json::from_str(str_)
+        Self::from_slice(str_.as_bytes())
     }
 
     /// Deserialize from a JSON byte slice.
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
-        serde_json::from_slice(slice)
+        serde_json::from_value(crate::extras::preserved::from_slice(slice)?)
     }
 
     /// Deserialize from a stream of JSON.
@@ -154,7 +158,8 @@ impl Root {
     where
         R: io::Read,
     {
-        serde_json::from_reader(reader)
+        let raw: Box<serde_json::value::RawValue> = serde_json::from_reader(reader)?;
+        Self::from_slice(raw.get().as_bytes())
     }
 
     /// Serialize as a `String` of JSON.
