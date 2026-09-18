@@ -353,10 +353,10 @@ impl Gltf {
         if magic.starts_with(b"glTF") {
             let mut glb = binary::Glb::from_reader(reader)?;
             // TODO: use `json::from_reader` instead of `json::from_slice`
-            json = json::deserialize::from_slice(&glb.json)?;
+            json = json::Root::from_slice(&glb.json)?;
             blob = glb.bin.take().map(|x| x.into_owned());
         } else {
-            json = json::deserialize::from_reader(reader)?;
+            json = json::Root::from_reader(reader)?;
             blob = None;
         };
         let document = Document::from_json_without_validation(json);
@@ -379,10 +379,10 @@ impl Gltf {
         let (json, blob): (json::Root, Option<Vec<u8>>);
         if slice.starts_with(b"glTF") {
             let mut glb = binary::Glb::from_slice(slice)?;
-            json = json::deserialize::from_slice(&glb.json)?;
+            json = json::Root::from_slice(&glb.json)?;
             blob = glb.bin.take().map(|x| x.into_owned());
         } else {
-            json = json::deserialize::from_slice(slice)?;
+            json = json::Root::from_slice(slice)?;
             blob = None;
         };
         let document = Document::from_json_without_validation(json);

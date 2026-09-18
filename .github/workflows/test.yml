@@ -22,6 +22,8 @@ jobs:
 
       - name: Tests
         run: cargo test --all --all-features --release
+      - name: Preserve geometry with downstream JSON object ordering
+        run: cargo test -p gltf-json --lib --all-features --features serde_json/preserve_order --release
       - name: Formatting
         run: cargo fmt --all -- --check
       - name: Clippy
