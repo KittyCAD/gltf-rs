@@ -25,12 +25,32 @@ fn decode(raw: &RawValue, depth: usize) -> serde_json::Result<Value> {
             values.into_iter().map(|v| decode(v, depth + 1)).collect()
         }
         b'{' => {
-            let values: std::collections::BTreeMap<String, &RawValue> =
-                serde_json::from_str(token)?;
-            values
-                .into_iter()
-                .map(|(key, value)| Ok((key, decode(value, depth + 1)?)))
-                .collect()
+            // Insert in wire order: downstream feature unification may enable
+            // serde_json/preserve_order. A BTreeMap intermediate would silently
+            // reorder opaque source history in that configuration.
+            struct ObjectVisitor(usize);
+            impl<'de> serde::de::Visitor<'de> for ObjectVisitor {
+                type Value = Value;
+
+                fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    f.write_str("a JSON object")
+                }
+
+                fn visit_map<A: serde::de::MapAccess<'de>>(
+                    self,
+                    mut entries: A,
+                ) -> Result<Value, A::Error> {
+                    let mut object = serde_json::Map::new();
+                    while let Some((key, raw)) = entries.next_entry::<String, &'de RawValue>()? {
+                        object.insert(key, decode(raw, self.0 + 1).map_err(A::Error::custom)?);
+                    }
+                    Ok(Value::Object(object))
+                }
+            }
+            serde::Deserializer::deserialize_map(
+                &mut serde_json::Deserializer::from_str(token),
+                ObjectVisitor(depth),
+            )
         }
         b'-' | b'0'..=b'9' => {
             // Keep JSON integers as integers, and keep negative zero's sign.
@@ -75,6 +95,17 @@ mod tests {
         assert_eq!(decoded[3].as_u64(), Some(u64::MAX));
         assert_eq!(decoded[4].as_i64(), Some(i64::MIN));
         assert_eq!(decoded[5].as_f64().unwrap().to_bits(), 1);
+    }
+
+    #[test]
+    fn preserves_object_order_under_the_consumers_json_features() {
+        let mut object = serde_json::Map::new();
+        object.insert("z".into(), Value::from(1));
+        object.insert("a".into(), serde_json::json!({"y": 2, "b": 3}));
+        let original = Value::Object(object);
+        let bytes = serde_json::to_vec(&original).unwrap();
+        let decoded = from_slice(&bytes).unwrap();
+        assert_eq!(serde_json::to_vec(&decoded).unwrap(), bytes);
     }
 
     #[test]
