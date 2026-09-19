@@ -70,7 +70,7 @@ where
     T: Clone
         + Copy
         + Default
-        + approx::ApproxEq
+        + approx::RelativeEq
         + std::fmt::Debug
         + std::ops::Add<T, Output = T>
         + std::ops::Div<f64, Output = T>
@@ -94,7 +94,7 @@ where
     T: Clone
         + Copy
         + Default
-        + approx::ApproxEq
+        + approx::RelativeEq
         + std::fmt::Debug
         + std::ops::Add<T, Output = T>
         + std::ops::Div<f64, Output = T>
@@ -114,7 +114,7 @@ where
     T: Clone
         + Copy
         + Default
-        + approx::ApproxEq
+        + approx::RelativeEq
         + std::fmt::Debug
         + std::ops::Add<T, Output = T>
         + std::ops::Div<f64, Output = T>
@@ -208,8 +208,6 @@ where
     /// Compute this BSpline's derivative.
     #[allow(unused)]
     pub fn derivative<'b>(&'b self) -> BSplineCurve<'b, T> {
-        use approx::ApproxEq;
-
         let d = self.degree;
         if d <= 1 {
             return BSplineCurve::<'b, T> {
@@ -301,7 +299,7 @@ where
     T: Clone
         + Copy
         + Default
-        + approx::ApproxEq
+        + approx::RelativeEq
         + std::fmt::Debug
         + std::ops::Add<T, Output = T>
         + std::ops::Div<f64, Output = T>
@@ -328,7 +326,7 @@ where
     T: Clone
         + Copy
         + Default
-        + approx::ApproxEq
+        + approx::RelativeEq
         + std::fmt::Debug
         + std::ops::Add<T, Output = T>
         + std::ops::Div<f64, Output = T>
