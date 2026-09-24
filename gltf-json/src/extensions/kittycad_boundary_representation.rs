@@ -14,6 +14,11 @@ fn bool_is_false(b: &bool) -> bool {
     !*b
 }
 
+// Used to skip serialization of unspecified physical tolerances.
+fn f64_is_zero(x: &f64) -> bool {
+    *x == 0.0
+}
+
 #[doc(inline)]
 pub use curve::{Curve2d, Curve3d};
 
@@ -1026,6 +1031,13 @@ pub struct Edge {
     /// Interval for the curve's 't' parameter.
     pub t: Interval,
 
+    /// Physical B-rep-local model-space tolerance in meters.
+    ///
+    /// A value of zero means the tolerance is unspecified.
+    #[serde(default, skip_serializing_if = "f64_is_zero")]
+    #[schemars(range(min = 0.0))]
+    pub tolerance: f64,
+
     /// Optional name for this surface.
     #[cfg(feature = "names")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1051,6 +1063,11 @@ impl Validate for Edge {
         self.closed
             .validate(root, || path().field("closed"), report);
         self.t.validate(root, || path().field("t"), report);
+        self.tolerance
+            .validate(root, || path().field("tolerance"), report);
+        if !self.tolerance.is_finite() || self.tolerance < 0.0 {
+            report(&|| path().field("tolerance"), Error::Invalid);
+        }
         self.extras
             .validate(root, || path().field("extras"), report);
 
@@ -1120,7 +1137,7 @@ impl Validate for Loop {
 }
 
 /// Set of loops defined on an abstract surface.
-#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "face")]
 pub struct Face {
@@ -1130,6 +1147,13 @@ pub struct Face {
     /// Face bounds.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub loops: Vec<IndexWithOrientation<Loop>>,
+
+    /// Physical B-rep-local model-space tolerance in meters.
+    ///
+    /// A value of zero means the tolerance is unspecified.
+    #[serde(default, skip_serializing_if = "f64_is_zero")]
+    #[schemars(range(min = 0.0))]
+    pub tolerance: f64,
 
     /// Optional name for this surface.
     #[cfg(feature = "names")]
@@ -1141,6 +1165,25 @@ pub struct Face {
     #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
+}
+
+impl Validate for Face {
+    fn validate<P, R>(&self, root: &Root, path: P, report: &mut R)
+    where
+        P: Fn() -> crate::Path,
+        R: FnMut(&dyn Fn() -> crate::Path, Error),
+    {
+        self.surface
+            .validate(root, || path().field("surface"), report);
+        self.loops.validate(root, || path().field("loops"), report);
+        self.tolerance
+            .validate(root, || path().field("tolerance"), report);
+        if !self.tolerance.is_finite() || self.tolerance < 0.0 {
+            report(&|| path().field("tolerance"), Error::Invalid);
+        }
+        self.extras
+            .validate(root, || path().field("extras"), report);
+    }
 }
 
 /// Boundary representation volume.
@@ -1182,6 +1225,10 @@ pub struct Solid {
 
     /// Optional application specific data.
     #[serde(default)]
+    #[cfg_attr(
+        feature = "extras",
+        serde(deserialize_with = "crate::extras::preserved::deserialize")
+    )]
     #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
@@ -1248,6 +1295,7 @@ mod tests {
             end: None,
             closed: false,
             t: Interval(0.0, 1.0),
+            tolerance: 0.0,
             #[cfg(feature = "names")]
             name: None,
             extras: Default::default(),
@@ -1258,5 +1306,75 @@ mod tests {
             "expected two Missing errors, got {:?}",
             errors
         );
+    }
+
+    #[test]
+    fn topology_tolerances_are_backward_compatible() {
+        let mut edge = Edge {
+            curve: IndexWithOrientation::same(Index::new(0)),
+            start: None,
+            end: None,
+            closed: true,
+            t: Interval(0.0, 1.0),
+            tolerance: 0.0,
+            #[cfg(feature = "names")]
+            name: None,
+            extras: Default::default(),
+        };
+
+        let legacy = serde_json::to_value(&edge).unwrap();
+        assert_eq!(legacy.get("tolerance"), None);
+        let decoded: Edge = serde_json::from_value(legacy).unwrap();
+        assert_eq!(decoded.tolerance, 0.0);
+
+        edge.tolerance = 2.5e-6;
+        let with_tolerance = serde_json::to_value(&edge).unwrap();
+        assert_eq!(
+            with_tolerance.get("tolerance"),
+            Some(&serde_json::json!(2.5e-6))
+        );
+
+        let face = Face {
+            surface: IndexWithOrientation::same(Index::new(0)),
+            loops: Vec::new(),
+            tolerance: 0.0,
+            #[cfg(feature = "names")]
+            name: None,
+            extras: Default::default(),
+        };
+        let legacy = serde_json::to_value(&face).unwrap();
+        assert_eq!(legacy.get("tolerance"), None);
+        let decoded: Face = serde_json::from_value(legacy).unwrap();
+        assert_eq!(decoded.tolerance, 0.0);
+    }
+
+    #[test]
+    fn topology_tolerances_must_be_finite_and_nonnegative() {
+        let mut edge = Edge {
+            curve: IndexWithOrientation::same(Index::new(0)),
+            start: None,
+            end: None,
+            closed: true,
+            t: Interval(0.0, 1.0),
+            tolerance: -1.0,
+            #[cfg(feature = "names")]
+            name: None,
+            extras: Default::default(),
+        };
+        assert!(collect_errors(&edge).contains(&Error::Invalid));
+        edge.tolerance = f64::INFINITY;
+        assert!(collect_errors(&edge).contains(&Error::Invalid));
+
+        let mut face = Face {
+            surface: IndexWithOrientation::same(Index::new(0)),
+            loops: Vec::new(),
+            tolerance: f64::NAN,
+            #[cfg(feature = "names")]
+            name: None,
+            extras: Default::default(),
+        };
+        assert!(collect_errors(&face).contains(&Error::Invalid));
+        face.tolerance = 0.0;
+        assert!(!collect_errors(&face).contains(&Error::Invalid));
     }
 }

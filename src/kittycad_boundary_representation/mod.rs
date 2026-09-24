@@ -3149,6 +3149,13 @@ impl<'a> Face<'a> {
         (surface, self.json.surface.orientation())
     }
 
+    /// Returns the physical B-rep-local model-space tolerance in meters.
+    ///
+    /// A value of zero means the tolerance is unspecified.
+    pub fn tolerance(&self) -> f64 {
+        self.json.tolerance
+    }
+
     /// Optional application specific data.
     pub fn extras(&self) -> &'a json::Extras {
         &self.json.extras
@@ -3271,6 +3278,13 @@ impl<'a> Edge<'a> {
     /// Returns the interval for the edge curve parameter 't'.
     pub fn t(&self) -> Interval {
         self.json.t.clone()
+    }
+
+    /// Returns the physical B-rep-local model-space tolerance in meters.
+    ///
+    /// A value of zero means the tolerance is unspecified.
+    pub fn tolerance(&self) -> f64 {
+        self.json.tolerance
     }
 
     /// Optional application specific data.

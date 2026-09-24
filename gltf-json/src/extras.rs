@@ -2,6 +2,9 @@ use gltf_derive::Validate;
 use serde_derive::{Deserialize, Serialize};
 use std::fmt;
 
+/// Exact finite-number decoding for historical geometry metadata.
+pub mod preserved;
+
 /// Data type of the `extras` attribute on all glTF objects.
 #[cfg(feature = "extras")]
 pub type Extras = std::collections::BTreeMap<String, serde_json::Value>;
