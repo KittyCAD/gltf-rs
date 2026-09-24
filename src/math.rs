@@ -20,12 +20,21 @@ use std::ops;
 mod test {
     use super::*;
 
-    impl approx::ApproxEq for Vector4 {
+    impl approx::AbsDiffEq for Vector4 {
         type Epsilon = f32;
         fn default_epsilon() -> f32 {
             f32::default_epsilon()
         }
 
+        fn abs_diff_eq(&self, other: &Self, epsilon: f32) -> bool {
+            f32::abs_diff_eq(&self.x, &other.x, epsilon)
+                && f32::abs_diff_eq(&self.y, &other.y, epsilon)
+                && f32::abs_diff_eq(&self.z, &other.z, epsilon)
+                && f32::abs_diff_eq(&self.w, &other.w, epsilon)
+        }
+    }
+
+    impl approx::RelativeEq for Vector4 {
         fn default_max_relative() -> f32 {
             f32::default_max_relative()
         }
@@ -36,7 +45,9 @@ mod test {
                 && f32::relative_eq(&self.z, &other.z, epsilon, max_relative)
                 && f32::relative_eq(&self.w, &other.w, epsilon, max_relative)
         }
+    }
 
+    impl approx::UlpsEq for Vector4 {
         fn default_max_ulps() -> u32 {
             f32::default_max_ulps()
         }
@@ -49,12 +60,21 @@ mod test {
         }
     }
 
-    impl approx::ApproxEq for Matrix4 {
+    impl approx::AbsDiffEq for Matrix4 {
         type Epsilon = f32;
         fn default_epsilon() -> f32 {
             f32::default_epsilon()
         }
 
+        fn abs_diff_eq(&self, other: &Self, epsilon: f32) -> bool {
+            Vector4::abs_diff_eq(&self.x, &other.x, epsilon)
+                && Vector4::abs_diff_eq(&self.y, &other.y, epsilon)
+                && Vector4::abs_diff_eq(&self.z, &other.z, epsilon)
+                && Vector4::abs_diff_eq(&self.w, &other.w, epsilon)
+        }
+    }
+
+    impl approx::RelativeEq for Matrix4 {
         fn default_max_relative() -> f32 {
             f32::default_max_relative()
         }
@@ -65,7 +85,9 @@ mod test {
                 && Vector4::relative_eq(&self.z, &other.z, epsilon, max_relative)
                 && Vector4::relative_eq(&self.w, &other.w, epsilon, max_relative)
         }
+    }
 
+    impl approx::UlpsEq for Matrix4 {
         fn default_max_ulps() -> u32 {
             f32::default_max_ulps()
         }
