@@ -3,7 +3,7 @@ use crate::{Document, Mesh, Part, Solid};
 use json::extensions::kittycad_model_based_definition::{self as mbd, Attachment, Measurement};
 
 #[doc(inline)]
-pub use mbd::{Aspect, Characteristic, Limit, Modifier, Symbol};
+pub use mbd::{Aspect, Characteristic, Value, Modifier, Symbol};
 
 /// Overlay definition.
 #[derive(Clone, Debug)]
@@ -160,9 +160,9 @@ impl<'a> Dimension<'a> {
         self.json.measurement
     }
 
-    /// Numerical limit of the dimension.
-    pub fn limit(&self) -> Limit {
-        self.json.limit
+    /// Numerical value of the dimension.
+    pub fn value(&self) -> Value {
+        self.json.value
     }
 
     /// Placement of the dimension text in the plane.
@@ -253,8 +253,8 @@ impl<'a> Tolerance<'a> {
     }
 
     /// Returns the tolerance limit value.
-    pub fn limit(&self) -> Limit {
-        self.json.limit
+    pub fn value(&self) -> Value {
+        self.json.value
     }
 
     /// Returns the tolerance modifiers.

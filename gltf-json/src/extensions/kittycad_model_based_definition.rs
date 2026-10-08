@@ -134,8 +134,8 @@ pub struct Dimension {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub measurement: Option<Measurement>,
 
-    /// Numerical limit of the dimension.
-    pub limit: Limit,
+    /// Numerical value of the dimension.
+    pub value: Value,
 
     /// Placement of the dimension text in the plane.
     pub placement: Placement,
@@ -488,8 +488,8 @@ pub struct Tolerance {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub characteristic: Option<Characteristic>,
 
-    /// Numerical limit of the feature.
-    pub limit: Limit,
+    /// Numerical value of the feature.
+    pub value: Value,
 
     /// Tolerance modifiers.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -506,13 +506,13 @@ pub struct Tolerance {
     pub extras: Extras,
 }
 
-/// Numerical limits of a particular feature.
+/// Numerical value of a particular feature.
 #[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum Limit {
+pub enum Value {
     /// Tolerance zone.
     #[serde(rename_all = "camelCase")]
-    Zone { max_deviation: f64 },
+    Nominal { value: f64 },
 
     /// `min-max`
     #[serde(rename_all = "camelCase")]
@@ -527,7 +527,7 @@ pub enum Limit {
     Bilateral { baseline: f64, min: f64, max: f64 },
 }
 
-impl Validate for Limit {}
+impl Validate for Value {}
 
 /// Block of text.
 #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
@@ -621,7 +621,7 @@ mod tests {
                     extras: Default::default(),
                     measurement: Some(Measurement::Diameter),
                     characteristic: Some(Characteristic::Straightness),
-                    limit: Limit::Zone {
+                    value: Value::Zone {
                         max_deviation: 0.04,
                     },
                     modifiers: vec![Modifier::MaximumMaterialCondition],
@@ -719,7 +719,7 @@ mod tests {
                         extras: Default::default(),
                         measurement: Some(Measurement::Diameter),
                         characteristic: None,
-                        limit: Limit::Zone {
+                        value: Value::Zone {
                             max_deviation: 0.04,
                         },
                         modifiers: Vec::new(),
@@ -737,7 +737,7 @@ mod tests {
                         extras: Default::default(),
                         measurement: Some(Measurement::Diameter),
                         characteristic: None,
-                        limit: Limit::Zone {
+                        value: Value::Zone {
                             max_deviation: 0.02,
                         },
                         modifiers: Vec::new(),
