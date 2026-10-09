@@ -98,6 +98,11 @@ pub struct Frame<'a> {
 }
 
 impl<'a> Frame<'a> {
+    /// Returns the underlying JSON definition.
+    pub fn as_json(&self) -> &'a mbd::Frame {
+        self.json
+    }
+
     /// Constructs a `Frame`.
     pub(crate) fn new(document: &'a Document, json: &'a mbd::Frame) -> Self {
         Self { document, json }
@@ -144,6 +149,11 @@ pub struct Dimension<'a> {
 }
 
 impl<'a> Dimension<'a> {
+    /// Returns the underlying JSON definition.
+    pub fn as_json(&self) -> &'a mbd::Dimension {
+        self.json
+    }
+
     /// Constructs a `Dimension`.
     pub(crate) fn new(document: &'a Document, json: &'a mbd::Dimension) -> Self {
         Self { document, json }
@@ -354,6 +364,11 @@ pub struct Datum<'a> {
 }
 
 impl<'a> Datum<'a> {
+    /// Returns the underlying JSON definition.
+    pub fn as_json(&self) -> &'a mbd::Datum {
+        self.json
+    }
+
     /// Constructs a `Datum`.
     pub(crate) fn new(document: &'a Document, id: &'a str, json: &'a mbd::Datum) -> Self {
         Self { document, id, json }
@@ -429,6 +444,11 @@ pub struct TextBlock<'a> {
 }
 
 impl<'a> TextBlock<'a> {
+    /// Returns the underlying JSON definition.
+    pub fn as_json(&self) -> &'a mbd::TextBlock {
+        self.json
+    }
+
     /// Constructs a `TextBlock`.
     pub(crate) fn new(document: &'a Document, json: &'a mbd::TextBlock) -> Self {
         Self { document, json }
