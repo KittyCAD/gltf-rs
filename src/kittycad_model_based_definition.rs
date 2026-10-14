@@ -213,6 +213,7 @@ impl<'a> Dimension<'a> {
 #[derive(Clone, Debug)]
 pub struct Placement<'a> {
     /// The parent `Document` struct.
+    #[allow(unused)]
     pub(crate) document: &'a Document,
 
     /// The corresponding JSON struct.
@@ -384,7 +385,7 @@ impl<'a> Datum<'a> {
 
     /// Returns the ID of the datum.
     pub fn id(&self) -> &'a str {
-        &self.id
+        self.id
     }
 
     /// Returns the visual representation of the datum.
@@ -407,6 +408,7 @@ impl<'a> Datum<'a> {
 #[derive(Clone, Debug)]
 pub struct Pointer<'a> {
     /// The parent `Document` struct.
+    #[allow(unused)]
     pub(crate) document: &'a Document,
 
     /// The corresponding JSON struct.

@@ -1013,7 +1013,7 @@ pub mod curve {
         }
 
         /// Wrapper constructor.
-        pub fn new(json: &kcad::curve::Nurbs3d) -> Nurbs3d {
+        pub fn new(json: &kcad::curve::Nurbs3d) -> Nurbs3d<'_> {
             Nurbs3d { json }
         }
 
@@ -3074,7 +3074,7 @@ impl<'a> Loop<'a> {
     }
 
     /// Returns an iterator that visits the 3D edges of the loop.
-    pub fn edges(&self) -> impl ExactSizeIterator<Item = Option<(Edge, Orientation)>> {
+    pub fn edges(&self) -> impl ExactSizeIterator<Item = Option<(Edge<'_>, Orientation)>> {
         self.json.edges.iter().map(|opt| {
             opt.clone()
                 .map(|kcad::IndexWithOrientation(index, orientation)| {
@@ -3085,7 +3085,7 @@ impl<'a> Loop<'a> {
     }
 
     /// Returns an iterator that visits the corresponding 2D traces of the loop.
-    pub fn traces(&self) -> iter::Traces {
+    pub fn traces(&self) -> iter::Traces<'_> {
         iter::Traces(self.document, self.json.traces.iter())
     }
 
