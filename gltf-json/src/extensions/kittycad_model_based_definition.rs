@@ -1,7 +1,7 @@
 //! Model-based definition and product manufacturing information.
 
 use crate::validation::Validate;
-use crate::{Extras, Mesh, Index};
+use crate::{Extras, Index, Mesh};
 use gltf_derive::Validate;
 use schemars::JsonSchema;
 use serde_derive::{Deserialize, Serialize};
@@ -148,7 +148,7 @@ pub struct Dimension {
 
     /// Visual representation of the dimension.
     pub mesh: Index<Mesh>,
- 
+
     /// Optional application specific data.
     #[serde(default)]
     #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
@@ -417,7 +417,6 @@ pub enum Characteristic {
     SurfaceProfile,
 
     // --- All geometric characteristics hereon require at least one datum ---
-
     /// Permitted angular deviation from a referenced datum.
     Angularity,
 
@@ -429,7 +428,7 @@ pub enum Characteristic {
 
     /// Permitted projected deviation from a parallel referenced datum.
     Parallelism,
- 
+
     /// Permitted perpendicular deviation from a referenced datum.
     Perpendicularity,
 

@@ -1,10 +1,10 @@
 #[cfg(feature = "extensions")]
 use serde_json::{Map, Value};
 
-#[cfg(feature = "KITTYCAD_model_based_definition")]
-use crate::Overlay;
 #[cfg(feature = "KITTYCAD_boundary_representation")]
 use crate::kittycad_boundary_representation::Solid;
+#[cfg(feature = "KITTYCAD_model_based_definition")]
+use crate::Overlay;
 
 use crate::math::*;
 use crate::{Camera, Document, Mesh, Skin};

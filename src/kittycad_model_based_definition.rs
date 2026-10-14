@@ -3,7 +3,7 @@ use crate::{Document, Mesh, Part, Solid};
 use json::extensions::kittycad_model_based_definition::{self as mbd, Attachment, Measurement};
 
 #[doc(inline)]
-pub use mbd::{Aspect, Characteristic, Value, Modifier, Symbol};
+pub use mbd::{Aspect, Characteristic, Modifier, Symbol, Value};
 
 /// Overlay definition.
 #[derive(Clone, Debug)]
@@ -41,12 +41,20 @@ impl<'a> Overlay<'a> {
 
     /// Returns the `Part` that will be referenced by this overlay.
     pub fn part(&self) -> Part<'a> {
-        self.document.parts().unwrap().nth(self.json.part.value()).unwrap()
+        self.document
+            .parts()
+            .unwrap()
+            .nth(self.json.part.value())
+            .unwrap()
     }
 
     /// Returns the `Solid` that will be referenced by this overlay.
     pub fn solid(&self) -> Solid<'a> {
-        self.document.solids().unwrap().nth(self.json.solid.value()).unwrap()
+        self.document
+            .solids()
+            .unwrap()
+            .nth(self.json.solid.value())
+            .unwrap()
     }
 
     /// Returns an `Iterator` visits the datum definitions.
@@ -395,7 +403,6 @@ impl<'a> Datum<'a> {
     }
 }
 
-
 /// MBD feature pointer.
 #[derive(Clone, Debug)]
 pub struct Pointer<'a> {
@@ -421,12 +428,7 @@ impl<'a> Pointer<'a> {
     pub fn index(&self) -> u32 {
         self.json.index
     }
-    /*
-    /// The leader line array begins at the callout boundary and ends at the model boundary.
-    pub fn leader_line(&self) -> Option<LeaderLine> {
-        &self.json.leader_line
-    }
-*/
+
     /// Optional application specific data.
     pub fn extras(&self) -> &'a json::Extras {
         &self.json.extras
@@ -476,7 +478,6 @@ impl<'a> TextBlock<'a> {
             .pointer
             .as_ref()
             .map(|json| Pointer::new(self.document, json))
-        
     }
 
     /// Returns the visual representation of the text block.
