@@ -165,9 +165,6 @@ pub enum Aspect {
 
     /// Identifies a particular face.
     Face,
-
-    /// Identifies a particular feature control frame.
-    Frame,
 }
 
 impl Validate for Aspect {}
@@ -416,7 +413,6 @@ pub enum Characteristic {
     /// Permitted projected deviation across a surface.
     SurfaceProfile,
 
-    // --- All geometric characteristics hereon require at least one datum ---
     /// Permitted angular deviation from a referenced datum.
     Angularity,
 
@@ -440,13 +436,6 @@ pub enum Characteristic {
 }
 
 impl Validate for Characteristic {}
-
-impl Characteristic {
-    /// Returns `true` if the geometric characteristic requires a datum.
-    pub fn requires_datum(self) -> bool {
-        self as isize >= Self::Angularity as isize
-    }
-}
 
 /// Tolerance measurement modifier.
 #[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Serialize)]
