@@ -141,11 +141,6 @@ pub mod kittycad_model_based_definition;
 #[cfg_attr(docsrs, doc(cfg(feature = "KITTYCAD_part")))]
 pub mod kittycad_part;
 
-/// Support for the `KITTYCAD_unit` extension.
-#[cfg(feature = "KITTYCAD_unit")]
-#[cfg_attr(docsrs, doc(cfg(feature = "KITTYCAD_unit")))]
-pub mod kittycad_unit;
-
 /// Material properties of primitives.
 pub mod material;
 
@@ -204,9 +199,6 @@ pub use self::kittycad_model_based_definition::Overlay;
 #[cfg(feature = "KITTYCAD_part")]
 #[doc(inline)]
 pub use self::kittycad_part::Part;
-#[cfg(feature = "KITTYCAD_unit")]
-#[doc(inline)]
-pub use self::kittycad_unit::Unit;
 #[doc(inline)]
 pub use self::material::Material;
 #[doc(inline)]
@@ -688,22 +680,6 @@ impl Document {
                 .iter()
                 .enumerate()
                 .map(|(index, json)| Overlay::new(self, index, json)),
-        )
-    }
-
-    /// Returns an `Iterator` that visits the unit definitions contained in the glTF asset.
-    #[cfg(feature = "KITTYCAD_unit")]
-    pub fn units(&self) -> Option<impl ExactSizeIterator<Item = Unit<'_>>> {
-        Some(
-            self.0
-                .extensions
-                .as_ref()?
-                .kittycad_unit
-                .as_ref()?
-                .units
-                .iter()
-                .enumerate()
-                .map(|(index, json)| Unit::new(self, index, json)),
         )
     }
 }

@@ -48,14 +48,6 @@ pub struct Root {
     )]
     pub kittycad_part: Option<KittyCadPart>,
 
-    #[cfg(feature = "KITTYCAD_unit")]
-    #[serde(
-        default,
-        rename = "KITTYCAD_unit",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub kittycad_unit: Option<KittyCadUnit>,
-
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
@@ -230,9 +222,6 @@ pub struct KittyCadModelBasedDefinition {
     /// Overlays.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub overlays: Vec<crate::extensions::kittycad_model_based_definition::Overlay>,
-
-    /// Unit used to express tolerance values.
-    pub unit_system: Vec<crate::Index<crate::extensions::kittycad_unit::Unit>>,
 }
 
 #[cfg(feature = "KITTYCAD_model_based_definition")]
@@ -259,41 +248,5 @@ impl crate::root::Get<crate::extensions::kittycad_model_based_definition::Overla
         index: crate::Index<crate::extensions::kittycad_model_based_definition::Overlay>,
     ) -> Option<&crate::extensions::kittycad_model_based_definition::Overlay> {
         self.overlays.get(index.value())
-    }
-}
-
-#[cfg(feature = "KITTYCAD_unit")]
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize, Validate)]
-#[serde(rename_all = "camelCase")]
-#[schemars(rename = "KITTYCAD_unit")]
-pub struct KittyCadUnit {
-    /// Unit definitions.
-    pub units: Vec<crate::extensions::kittycad_unit::Unit>,
-}
-
-#[cfg(feature = "KITTYCAD_unit")]
-impl crate::root::Get<crate::extensions::kittycad_unit::Unit> for crate::Root {
-    fn get(
-        &self,
-        index: crate::Index<crate::extensions::kittycad_unit::Unit>,
-    ) -> Option<&crate::extensions::kittycad_unit::Unit> {
-        self.extensions
-            .as_ref()?
-            .kittycad_unit
-            .as_ref()?
-            .units
-            .get(index.value())
-    }
-}
-
-#[cfg(feature = "KITTYCAD_unit")]
-impl crate::root::Get<crate::extensions::kittycad_unit::Unit>
-    for crate::extensions::root::KittyCadUnit
-{
-    fn get(
-        &self,
-        index: crate::Index<crate::extensions::kittycad_unit::Unit>,
-    ) -> Option<&crate::extensions::kittycad_unit::Unit> {
-        self.units.get(index.value())
     }
 }

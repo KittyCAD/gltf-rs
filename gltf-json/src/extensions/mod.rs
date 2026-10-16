@@ -28,10 +28,6 @@ pub mod kittycad_part;
 #[cfg(feature = "KITTYCAD_model_based_definition")]
 pub mod kittycad_model_based_definition;
 
-/// Contains `Unit` and other related data structures.
-#[cfg(feature = "KITTYCAD_unit")]
-pub mod kittycad_unit;
-
 /// Contains `Uuid`.
 #[cfg(feature = "KITTYCAD_uuid")]
 pub mod kittycad_uuid;
