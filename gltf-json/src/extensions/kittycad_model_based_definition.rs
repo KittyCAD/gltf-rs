@@ -237,47 +237,57 @@ pub struct Pointer {
 pub enum Attachment {
     /// Anchor is on the left side of the item.
     ///
+    /// ```text
     ///   ┌───┐
     /// ──W   |
     ///   └───┘
+    /// ```
     ///
     /// Applicable to any item.
     West,
 
     /// Anchor is on the right side of the item.
     ///
+    /// ```text
     /// ┌───┐
     /// |   E──
     /// └───┘
+    /// ```
     ///
     /// Applicable to any item.
     East,
 
     /// Anchor is on the top side of the item.
     ///
+    /// ```text
     ///   |
     /// ┌─N─┐
     /// │   |
     /// └───┘
+    /// ```
     ///
     /// Applicable only to text and datum boxes.
     North,
 
     /// Anchor is on the bottom side of the item.
     ///
+    /// ```text
     /// ┌───┐
     /// │   |
     /// └─S─┘
     ///   |
+    /// ```
     ///
     /// Applicable only to text and datum boxes.
     South,
 
     /// Anchor is in the center of the item.
     ///
+    /// ```text
     /// ┌───┐
     /// │ C |
     /// └───┘
+    /// ```
     ///
     /// Applicable only to text.
     Center,
@@ -311,7 +321,7 @@ pub struct Frame {
     ///
     /// For example, two tolerances are grouped the position tolerance feature represented by ⌖ in the diagram below.
     ///
-    /// ```
+    /// ```text
     /// ┌───────┬───────┬───┐
     /// │       │ ⌀ .04 │ A │
     /// │   ⌖   ├───────┼───┤
