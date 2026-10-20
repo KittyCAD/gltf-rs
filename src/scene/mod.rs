@@ -3,6 +3,8 @@ use serde_json::{Map, Value};
 
 #[cfg(feature = "KITTYCAD_boundary_representation")]
 use crate::kittycad_boundary_representation::Solid;
+#[cfg(feature = "KITTYCAD_model_based_definition")]
+use crate::Overlay;
 
 use crate::math::*;
 use crate::{Camera, Document, Mesh, Skin};
@@ -144,6 +146,22 @@ impl<'a> Node<'a> {
                     .solids()
                     .unwrap()
                     .nth(ext.solid.value())
+                    .unwrap()
+            })
+    }
+
+    /// Returns the overlay referenced by this node.
+    #[cfg(feature = "KITTYCAD_model_based_definition")]
+    pub fn overlay(&self) -> Option<Overlay<'a>> {
+        self.json
+            .extensions
+            .as_ref()
+            .and_then(|ext| ext.kittycad_model_based_definition.as_ref())
+            .map(|ext| {
+                self.document
+                    .overlays()
+                    .unwrap()
+                    .nth(ext.overlay.value())
                     .unwrap()
             })
     }
